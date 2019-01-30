@@ -156,4 +156,4 @@ This is similiar to LGPL but more permissive:
 Like in LGPL, if you modify this library, you have to make your changes available.
 Making a github fork of the library with your changes satisfies those requirements perfectly.
 
-Note - since you are linking to FFmpeg libraries you need to consider also `avcodec` and `avutil` licensing.
+You are linking to FFmpeg libraries. Consider also `avcodec` and `avutil` licensing.
