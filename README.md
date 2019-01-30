@@ -5,6 +5,22 @@ There are no performance loses (at the cost of library flexibility).
 
 Currently it supports VAAPI and H.264 standard.
 
+## Intended Use
+
+Raw H.264 encoding:
+- custom network streaming protocols
+- low latency streaming
+- raw H.264 dumping
+- ...
+
+Complex pipelines are beyond the scope of this library:
+- muxing (e.g. wrap in `avi` container)
+- scaling
+- color conversions (apart from those supported by hardware)
+- filtering
+
+If you need one of above try FFmpeg or GStreamer.
+
 ## Platforms 
 
 Unix-like operating systems (e.g. Linux).
@@ -49,7 +65,7 @@ cmake ..
 make
 ```
 
-## Running example
+## Running Example
 
 ``` bash
 # ./hve-encode-raw-h264 <number-of-seconds> [device]
