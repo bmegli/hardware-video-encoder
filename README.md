@@ -3,9 +3,7 @@
 This library wraps hardware video encoding in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
-Currently it supports:
-- Intel VAAPI compatible hardware encoders ([Quick Sync Video](https://ark.intel.com/Search/FeatureFilter?productType=processors&QuickSyncVideo=true))
-- H.264 encoding standard
+Currently it supports VAAPI and H.264 standard.
 
 ## Platforms 
 
@@ -86,6 +84,8 @@ ffplay output.h264
 
 ## Using
 
+See examples directory for more complete and commented examples with error handling.
+
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
@@ -94,19 +94,21 @@ ffplay output.h264
 	//fill with your stride (width including padding if any)
 	frame.linesize[0] = frame.linesize[1] = WIDTH;
 	
-	uint8_t Y[WIDTH*HEIGHT]; //dummy NV12 luminance data
-	uint8_t color[WIDTH*HEIGHT/2]; //dummy NV12 color data
-
 	AVPacket *packet; //encoded data is returned in FFmpeg packet
 	int failed; //error indicator while encoding
 
+	//...
+	//whatever logic you have to prepare data source
+	//...
+
 	while(keep_encoding) 
-	{ 	//fill hve_frame with pointers to your data in NV12 pixel format
+	{
 		//...
-		//update the data in Y and color arrays in some way
+		//update NV12 Y and color data (e.g. get them from camera)
 		//...
-		frame.data[0]=Y; 
-		frame.data[1]=color;
+	 	//fill hve_frame with pointers to your data in NV12 pixel format
+		frame.data[0]=Y; //dummy luminance plane
+		frame.data[1]=color; //dummy UV color plane
 		//encode this frame
 		hve_send_frame(hardware_encoder, &frame);
 		while( (packet=hve_receive_packet(hardware_encoder, &failed)) )
@@ -124,6 +126,8 @@ ffplay output.h264
 	
 	hve_close(hardware_encoder);
 ```
+
+That's it! You have just seen all the functions and data types in the library.
 
 ## License
 
