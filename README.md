@@ -34,21 +34,28 @@ Tested on Ubuntu 18.04.
 sudo apt-get update 
 # get avcodec and avutil (and ffmpeg for testing)
 sudo apt-get install ffmpeg libavcodec-dev libavutil-dev
-# get compilers and make
+# get compilers and make and cmake
 sudo apt-get install build-essential
+# get cmake - we need to specify libcurl4 for Ubuntu 18.04 dependencies problem
+sudo apt-get install libcurl4 cmake
 # get git
 sudo apt-get install git
 # clone the repository
 git clone https://github.com/bmegli/hardware-video-encoder.git
 
 # finally build the library and examples
-TO DO
+cd hardware-video-encoder
+mkdir build
+cd build
+cmake ..
+make
 ```
 
-## Running 
+## Running example
 
 ``` bash
-TO DO
+# ./hve-encode-raw-h264 <number-of-seconds> [device]
+./hve-encode-raw-h264 10
 ```
 
 ### Troubleshooting
@@ -65,7 +72,7 @@ vainfo --display drm --device /dev/dri/renderD128
 Once you identify your Intel device run the example, e.g.
 
 ```bash
-TO DO /dev/dri/renderD128
+./hve-encode-raw-h264 10 /dev/dri/renderD128
 ```
 
 ## Testing
