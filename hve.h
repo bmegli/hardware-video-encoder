@@ -49,10 +49,10 @@ struct hve;
  */
 struct hve_config
 {
-	int width;
-	int height;
-	int framerate;
-	const char *device; //NULL or device, e.g. "/dev/dri/renderD128"
+	int width; //!< width of the encoded frames
+	int height; //!< height of the encoded frames
+	int framerate; //!< framerate of the encoded video
+	const char *device; //!< NULL or device, e.g. "/dev/dri/renderD128"
 };
 
 /**
@@ -62,14 +62,16 @@ struct hve_config
  * Fill linsize array with stride (width and padding) of the data in bytes.
  * Fill data with pointers to the data (no copying is needed).
  * 
+ * For non planar formats only data[0] and linesize[0] is used.
+ * 
  * Pass the result to hve_send_frame.
  * 
  * @see hve_send_frame
  */
 struct hve_frame
 {
-	uint8_t *data[AV_NUM_DATA_POINTERS];
-	int linesize[AV_NUM_DATA_POINTERS];
+	uint8_t *data[AV_NUM_DATA_POINTERS]; //!< array of pointers to frame planes (e.g. Y plane and UV plane)
+	int linesize[AV_NUM_DATA_POINTERS]; //!< array of strides (width + padding) for planar frame formats
 };
 
 
@@ -114,8 +116,7 @@ void hve_close(struct hve* h);
  *   
  * Example flushing:
  * @code
- *  if( hve_send_frame(hardware_encoder, NULL) != HVE_OK)
- *		break; //break on error	
+ *  hve_send_frame(hardware_encoder, NULL);
  * 
  *	while( (packet=hve_receive_packet(hardware_encoder, &failed)) )
  *	{
@@ -124,7 +125,8 @@ void hve_close(struct hve* h);
  *	
  *	//NULL packet and non-zero failed indicates failure during encoding
  *	if(failed) 
- *		break; //break on error
+ *		//your logic on failure	
+ * 
  * @endcode 
  * 
  * Perfomance hints: 
@@ -149,7 +151,7 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame);
  * - consume it immidiately
  * - or copy the data
  *   
- * Example:
+ * Example (in encoding loop):
  * @code
  *  if( hve_send_frame(hardware_encoder, &frame) != HVE_OK)
  *		break; //break on error	
@@ -168,7 +170,7 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame);
  * @param h pointer to internal library data
  * @param error pointer to error code
  * @return 
- * - AVPacket * pointer to FFMpeg AVPacket, you are mainly interested in data and size parameters
+ * - AVPacket * pointer to FFMpeg AVPacket, you are mainly interested in data and size members
  * - NULL when no more data is pending, query error parameter to check result (HVE_OK on success)
  * 
  * @see hve_send_frame
