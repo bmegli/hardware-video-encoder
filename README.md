@@ -15,13 +15,7 @@ Raw H.264 encoding:
 - raw H.264 dumping
 - ...
 
-Complex pipelines are beyond the scope of this library:
-- muxing (e.g. wrap in `avi` container)
-- scaling
-- color conversions (apart from those supported by hardware)
-- filtering
-
-If you need one of above try FFmpeg or GStreamer.
+Complex pipelines (muxing, scaling, color conversions, filtering) are beyond the scope of this library.
 
 ## Platforms 
 
@@ -158,20 +152,61 @@ For static linking of HVE and dynamic linking of FFmpeg libraries (easiest):
 - add `avcodec` and `avutil` to linked libraries in IDE project configuration
 
 For dynamic linking of HVE and FFmpeg libraries:
-- place `hve.h` where compiler can find it
-- place `libhve.so` build by make where linker can find it
+- place `hve.h` where compiler can find it (e.g. `make install` for `/usr/local/include/hve.h`)
+- place `libhve.so` where linker can find it (e.g. `make install` for `/usr/local/lib/libhve.so`)
+- make sure `/usr/local/...` is considered for libraries
 - add `hve`, `avcodec` and `avutil` to linked libraries in IDE project configuration
 - make sure `libhve.so` is reachable to you program at runtime (e.g. set `LD_LIBRARIES_PATH`)
 
 ### CMake
 
-TO DO
+Assuming directory structure with HVE as `hardware-video-encoder` subdirectory (or git submodule) of your project.
+
+```
+your-project
+│   main.cpp
+│   CMakeLists.txt
+│
+└───hardware-video-encoder
+│   │   hve.h
+│   │   hve.c
+│   │   CMakeLists.txt
+```
+
+You may use the following top level CMakeLists.txt
+
+``` CMake
+cmake_minimum_required(VERSION 3.0)
+
+project(
+    your-project
+)
+
+# drop the SHARED if you would rather link with HVE statically
+add_library(hve SHARED hardware-video-encoder/hve.c)
+
+add_executable(your-project main.cpp)
+target_include_directories(your-project PRIVATE hardware-video-encoder)
+target_link_libraries(your-project hve avcodec avutil)
+```
+
+For example see [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)
 
 ### Manually
 
-TO DO
+Assuming your `main.c`/`main.cpp` and `hve.h`, `hve.c` are all in the same directory:
 
-###
+C
+```bash
+gcc main.c hve.c -lavcodec -lavutil -o your-program
+```
+
+C++
+```bash
+gcc -c hve.c
+g++ -c main.cpp
+g++ hve.o main.o -lavcodec -lavutil -o your program
+```
 
 ## License
 
@@ -185,3 +220,12 @@ Like in LGPL, if you modify this library, you have to make your changes availabl
 Making a github fork of the library with your changes satisfies those requirements perfectly.
 
 Since you are linking to FFmpeg libraries. Consider also `avcodec` and `avutil` licensing.
+
+## Additional information
+
+### Library uses
+
+Realsense D400 camera infrared stream to H.264 - [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)
+
+
+
