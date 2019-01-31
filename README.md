@@ -147,6 +147,32 @@ See examples directory for more complete and commented examples with error handl
 
 That's it! You have just seen all the functions and data types in the library.
 
+## Compiling your code
+
+You have several options.
+
+### IDE (recommended)
+
+For static linking of HVE and dynamic linking of FFmpeg libraries (easiest):
+- copy `hve.h` and `hve.c` to your project and add them in your favourite IDE
+- add `avcodec` and `avutil` to linked libraries in IDE project configuration
+
+For dynamic linking of HVE and FFmpeg libraries:
+- place `hve.h` where compiler can find it
+- place `libhve.so` build by make where linker can find it
+- add `hve`, `avcodec` and `avutil` to linked libraries in IDE project configuration
+- make sure `libhve.so` is reachable to you program at runtime (e.g. set `LD_LIBRARIES_PATH`)
+
+### CMake
+
+TO DO
+
+### Manually
+
+TO DO
+
+###
+
 ## License
 
 Library is licensed under Mozilla Public License, v. 2.0
