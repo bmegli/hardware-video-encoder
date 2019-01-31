@@ -5,6 +5,8 @@ There are no performance loses (at the cost of library flexibility).
 
 Currently it supports VAAPI and H.264 standard.
 
+See also library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
+
 ## Intended Use
 
 Raw H.264 encoding:
