@@ -94,9 +94,21 @@ Play result raw H.264 file with FFmpeg:
 ffplay output.h264
 ```
 
+You should see procedurally generated video (moving through greyscale).
+
 ## Using
 
-See examples directory for more complete and commented examples with error handling.
+See examples directory for a more complete and commented examples with error handling.
+
+There are just 4 functions and 3 user-visible data types:
+- `hve_init`
+- `hve_send_frame` (sends uncompressed data to hardware)
+- `hve_receive_packet` (retrieves compressed data from hardware)
+- `hve_close`
+
+The library takes off you the burden of:
+- hardware encoder initialization/cleanup
+- internal data lifecycle managegment
 
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE};
