@@ -5,7 +5,9 @@ There are no performance loses (at the cost of library flexibility).
 
 Currently it supports VAAPI and H.264 standard.
 
-See also library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
+See library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
+
+See also twin [HVD](https://github.com/bmegli/hardware-video-decoder) Hardware Video Decoder library.
 
 ## Intended Use
 
@@ -130,7 +132,7 @@ The library takes off you the burden of:
 		//...
 		//update NV12 Y and color data (e.g. get them from camera)
 		//...
-	 	//fill hve_frame with pointers to your data in NV12 pixel format
+		//fill hve_frame with pointers to your data in NV12 pixel format
 		frame.data[0]=Y; //dummy luminance plane
 		frame.data[1]=color; //dummy UV color plane
 		//encode this frame
@@ -238,6 +240,3 @@ Since you are linking to FFmpeg libraries. Consider also `avcodec` and `avutil` 
 ### Library uses
 
 Realsense D400 camera infrared stream to H.264 - [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)
-
-
-
