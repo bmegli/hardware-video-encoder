@@ -28,8 +28,6 @@ Tested on Ubuntu 18.04.
 
 Intel VAAPI compatible hardware encoders ([Quick Sync Video](https://ark.intel.com/Search/FeatureFilter?productType=processors&QuickSyncVideo=true))
 
-There is possibility that it will also work with Amd/Nvidia hardware.
-
 ## Dependencies
 
 Library depends on:
