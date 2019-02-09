@@ -85,8 +85,8 @@ struct hve *hve_init(const struct hve_config *config)
 		fprintf(stderr, "hve: cannot open video encoder codec\n");
 		return hve_close_and_return_null(h);
 	}
-	 
-	 if(!(h->sw_frame = av_frame_alloc()))
+
+	if(!(h->sw_frame = av_frame_alloc()))
 	{
 		fprintf(stderr, "hve: av_frame_alloc not enough memory\n");
 		return hve_close_and_return_null(h);
@@ -105,11 +105,16 @@ struct hve *hve_init(const struct hve_config *config)
 
 void hve_close(struct hve* h)
 {
+	if(h==NULL)
+		return;
+
 	av_packet_unref(&h->enc_pkt);
 	av_frame_free(&h->sw_frame);
 	av_frame_free(&h->hw_frame);
 	avcodec_free_context(&h->avctx);
 	av_buffer_unref(&h->hw_device_ctx);
+
+	free(h);
 }
 static struct hve *hve_close_and_return_null(struct hve *h)
 {
