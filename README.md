@@ -108,7 +108,7 @@ There are just 4 functions and 3 user-visible data types:
 
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE,
-													PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
+					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };
 
