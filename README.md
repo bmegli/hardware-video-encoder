@@ -106,14 +106,12 @@ There are just 4 functions and 3 user-visible data types:
 - `hve_receive_packet` (retrieves compressed data from hardware)
 - `hve_close`
 
-The library takes off you the burden of:
-- hardware encoder initialization/cleanup
-- internal data lifecycle managegment
-
 ```C
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, PIXEL_FORMAT};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };
+
+	//later assuming PIXEL_FORMAT is "nv12" (you can use something else)
 
 	//fill with your stride (width including padding if any)
 	frame.linesize[0] = frame.linesize[1] = WIDTH;

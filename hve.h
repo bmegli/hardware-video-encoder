@@ -44,7 +44,30 @@ struct hve;
 
 /**
  * @struct hve_config
- * @brief Encoder configuration.
+ * @brief Encoder configuration
+ *
+ * The device can be:
+ * - NULL (select automatically)
+ * - point to valid device e.g. "/dev/dri/renderD128" for vaapi
+ *
+ * If you have multiple VAAPI devices (e.g. NVidia GPU + Intel) you may have
+ * to specify Intel directly. NVidia will not work through VAAPI for encoding
+ * (it works through VAAPI-VDPAU bridge and VDPAU is only for decoding).
+ *
+ * The pixel_format (format of what you upload) typically can be:
+ * - nv12 (this is generally safe choice)
+ * - yuv420p
+ * - yuyv422
+ * - uyvy422
+ * - yuv422p
+ * - rgb0
+ * - bgr0
+ *
+ * There are no software color conversions in this library.
+ *
+ * For pixel format explanation see:
+ * <a href="https://ffmpeg.org/doxygen/3.4/pixfmt_8h.html#a9a8e335cf3be472042bc9f0cf80cd4c5">FFmpeg pixel formats</a>
+ *
  * @see hve_init
  */
 struct hve_config
@@ -53,6 +76,7 @@ struct hve_config
 	int height; //!< height of the encoded frames
 	int framerate; //!< framerate of the encoded video
 	const char *device; //!< NULL or device, e.g. "/dev/dri/renderD128"
+	const char *pixel_format; //!< NULL for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p"
 };
 
 /**
@@ -112,6 +136,8 @@ void hve_close(struct hve* h);
  * Call with NULL frame argument to flush the encoder when you want to finish encoding.
  * After flushing follow with hve_receive_packet to get last encoded frames.
  * After flushing it is not possible to reuse the encoder.
+ *
+ * The pixel format of the frame should match the one specified in hve_init.
  *
  * Perfomance hints:
  *  - don't copy data from your source, just pass the pointers to data planes
