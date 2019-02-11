@@ -75,6 +75,11 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };
 	h->avctx->pix_fmt = AV_PIX_FMT_VAAPI;
 
+	if(config->profile)
+		h->avctx->profile = config->profile;
+	h->avctx->max_b_frames = config->max_b_frames;
+	h->avctx->bit_rate = config->bit_rate;
+
 	//try to find software pixel format that user wants to upload data in
 	if(config->pixel_format == NULL)
 		h->sw_pix_fmt = AV_PIX_FMT_NV12;

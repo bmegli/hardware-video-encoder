@@ -68,6 +68,23 @@ struct hve;
  * For pixel format explanation see:
  * <a href="https://ffmpeg.org/doxygen/3.4/pixfmt_8h.html#a9a8e335cf3be472042bc9f0cf80cd4c5">FFmpeg pixel formats</a>
  *
+ * The profile (H.264 profile) can typically be:
+ * - FF_PROFILE_H264_CONSTRAINED_BASELINE
+ * - FF_PROFILE_H264_MAIN
+ * - FF_PROFILE_H264_HIGH
+ * - ...
+ *
+ * You may check profiles supported by your hardware with vainfo:
+ * @code
+ * vainfo --display drm --device /dev/dri/renderDXYZ
+ * @endcode
+ *
+ * The max_b_frames controls the number of B frames.
+ * Disable B frames if you need low latency (at the cost of space).
+ * The output will be delayed by max_b_frames+1 relative to the input.
+ *
+ * The bit_rate is average bitrate in VBR mode.
+ *
  * @see hve_init
  */
 struct hve_config
@@ -77,6 +94,9 @@ struct hve_config
 	int framerate; //!< framerate of the encoded video
 	const char *device; //!< NULL or device, e.g. "/dev/dri/renderD128"
 	const char *pixel_format; //!< NULL for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p"
+	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH
+	int max_b_frames; //!< maximum number of B-frames between non-B-frames (disable if you need low latency)
+	int bit_rate; //!< the average bitrate in VBR mode
 };
 
 /**
