@@ -92,8 +92,8 @@ struct hve_config
 	int width; //!< width of the encoded frames
 	int height; //!< height of the encoded frames
 	int framerate; //!< framerate of the encoded video
-	const char *device; //!< NULL or device, e.g. "/dev/dri/renderD128"
-	const char *pixel_format; //!< NULL for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p"
+	const char *device; //!< NULL / "" or device, e.g. "/dev/dri/renderD128"
+	const char *pixel_format; //!< NULL / "" for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p"
 	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH
 	int max_b_frames; //!< maximum number of B-frames between non-B-frames (disable if you need low latency)
 	int bit_rate; //!< the average bitrate in VBR mode

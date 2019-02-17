@@ -50,7 +50,10 @@ struct hve *hve_init(const struct hve_config *config)
 	avcodec_register_all();
 	av_log_set_level(AV_LOG_VERBOSE);
 
-	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, config->device, NULL, 0) ) < 0)
+	//specified device or NULL / empty string for default
+	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
+
+	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, device, NULL, 0) ) < 0)
 	{
 		fprintf(stderr, "hve: failed to create a VAAPI device\n");
 		return hve_close_and_return_null(h);
@@ -81,7 +84,7 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->bit_rate = config->bit_rate;
 
 	//try to find software pixel format that user wants to upload data in
-	if(config->pixel_format == NULL)
+	if(config->pixel_format == NULL || config->pixel_format[0] == '\0')
 		h->sw_pix_fmt = AV_PIX_FMT_NV12;
 	else if( ( h->sw_pix_fmt = av_get_pix_fmt(config->pixel_format) ) == AV_PIX_FMT_NONE )
 	{
