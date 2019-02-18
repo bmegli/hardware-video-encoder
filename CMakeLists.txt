@@ -4,7 +4,8 @@ project(
     hve
 )
 
-add_library(hve SHARED hve.c)
+# altenatively SHARED instead of STATIC for a shared library
+add_library(hve STATIC hve.c)
 target_link_libraries(hve avcodec avutil)
 install(TARGETS hve DESTINATION lib)
 install(FILES hve.h DESTINATION include)
