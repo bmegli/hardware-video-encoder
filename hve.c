@@ -32,6 +32,7 @@ struct hve
 
 static int init_hwframes_context(struct hve* h, const struct hve_config *config);
 static struct hve *hve_close_and_return_null(struct hve *h);
+static void hve_dump_sw_pix_formats(struct hve *h);
 
 // NULL on error
 struct hve *hve_init(const struct hve_config *config)
@@ -215,7 +216,9 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame)
 		fprintf(stderr, "hve: hw_frame->hw_frames_ctx not enough memory\n");
 		return HVE_ERROR;
 	}
-
+	
+	hve_dump_sw_pix_formats(h);
+	
 	if((err = av_hwframe_transfer_data(h->hw_frame, sw_frame, 0)) < 0)
 	{
 		fprintf(stderr, "hve: error while transferring frame data to surface\n");
@@ -254,4 +257,26 @@ AVPacket *hve_receive_packet(struct hve *h, int *error)
 	//otherwise we got an error
 	*error = ( ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) ? HVE_OK : HVE_ERROR;
 	return NULL;
+}
+
+static void hve_dump_sw_pix_formats(struct hve *h)
+{
+	enum AVPixelFormat *formats, *iterator;
+
+	if(av_hwframe_transfer_get_formats(h->hw_frame->hw_frames_ctx, AV_HWFRAME_TRANSFER_DIRECTION_TO, &formats, 0) < 0)
+	{
+		fprintf(stderr, "hve: failed to get transfer formats\n");
+		return;
+	}
+	iterator=formats;
+
+	fprintf(stderr, "hve: make sure you are using supported software pixel format:\n");
+
+	while(*iterator != AV_PIX_FMT_NONE)
+	{
+		fprintf(stderr, "%d : %s\n", *iterator, av_get_pix_fmt_name (*iterator));
+		++iterator;
+	}
+
+	av_free(formats);
 }
