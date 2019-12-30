@@ -58,16 +58,10 @@ struct hve *hve_init(const struct hve_config *config)
 		fprintf(stderr, "hve: failed to create a VAAPI device\n");
 		return hve_close_and_return_null(h);
 	}
-	//ffmpeg -encoders | grep vaapi
-	/*
-	 * V..... h264_vaapi           H.264/AVC (VAAPI) (codec h264)
-	 * V..... hevc_vaapi           H.265/HEVC (VAAPI) (codec hevc)
-	 * V..... mjpeg_vaapi          MJPEG (VAAPI) (codec mjpeg)
-	 * V..... mpeg2_vaapi          MPEG-2 (VAAPI) (codec mpeg2video)
-	 * V..... vp8_vaapi            VP8 (VAAPI) (codec vp8)
-	 * V..... vp9_vaapi            VP9 (VAAPI) (codec vp9)
-	 */
-	if(!(codec = avcodec_find_encoder_by_name("hevc_vaapi")))
+
+	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
+
+	if(!(codec = avcodec_find_encoder_by_name(encoder)))
 	{
 		fprintf(stderr, "hve: could not find encoder\n");
 		return hve_close_and_return_null(h);
@@ -86,8 +80,6 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };
 	h->avctx->pix_fmt = AV_PIX_FMT_VAAPI;
 
-	//Profiles
-	//https://ffmpeg.org/doxygen/3.4/avcodec_8h.html
 	if(config->profile)
 		h->avctx->profile = config->profile;
 	h->avctx->max_b_frames = config->max_b_frames;

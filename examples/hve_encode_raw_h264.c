@@ -1,5 +1,5 @@
 /*
- * HVE Hardware Video Encoder library example of encoding through VAAPI to H.264
+ * HVE Hardware Video Encoder library example of encoding through VAAPI to HEVC 10 bits per channel
  *
  * Copyright 2019 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
@@ -19,7 +19,8 @@ const int HEIGHT=720;
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
-const char *PIXEL_FORMAT="p010le"; //NULL for default (NV12) or pixel format e.g. "rgb0"
+const char *ENCODER="hevc_vaapi";//NULL for default (h264_vaapi) or FFmpeg encoder e.g. "hevc_vaapi", ...
+const char *PIXEL_FORMAT="p010le"; //NULL for default (nv12) or pixel format e.g. "rgb0", ...
 const int PROFILE=FF_PROFILE_HEVC_MAIN_10; //or FF_PROFILE_H264_MAIN, FF_PROFILE_H264_CONSTRAINED_BASELINE, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
 const int BITRATE=0; //average bitrate in VBR
@@ -36,7 +37,7 @@ int main(int argc, char* argv[])
 		return -1;
 
 	//prepare library data
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw HEVC output
@@ -98,8 +99,8 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 
 		while( (packet=hve_receive_packet(hardware_encoder, &failed)) )
 		{
-			//packet.data is H.264 encoded frame of packet.size length
-			//here we are dumping it to raw H.264 file as example
+			//packet.data is HEVC encoded frame of packet.size length
+			//here we are dumping it to raw HEVC file as example
 			//yes, we ignore the return value of fwrite for simplicty
 			//it could also fail in harsh real world...
 			fwrite(packet->data, packet->size, 1, output_file);
@@ -143,10 +144,11 @@ int hint_user_on_failure(char *argv[])
 	fprintf(stderr, "%s 10 /dev/dri/renderD128\n", argv[0]);
 	return -1;
 }
+
 void hint_user_on_success()
 {
 	printf("finished successfully\n");
-	printf("output written to \"outout.hevc\" file\n");
+	printf("output written to \"out.hevc\" file\n");
 	printf("test with:\n\n");
 	printf("ffplay output.hevc\n");
 }
