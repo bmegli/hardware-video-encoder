@@ -3,7 +3,7 @@
 This library wraps hardware video encoding in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
-Currently it supports VAAPI and H.264 standard.
+Currently it supports VAAPI and various codecs (H.264, HEVC, ...).
 
 See library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
 
@@ -13,10 +13,10 @@ See [hardware-video-streaming](https://github.com/bmegli/hardware-video-streamin
 
 ## Intended Use
 
-Raw H.264 encoding:
+Raw encoding (H264, HEVC, ...):
 - custom network streaming protocols
 - low latency streaming
-- raw H.264 dumping
+- raw dumping (H264, HEVC, ...)
 - ...
 
 Complex pipelines (muxing, scaling, color conversions, filtering) are beyond the scope of this library.
@@ -63,11 +63,16 @@ cmake ..
 make
 ```
 
-## Running Example
+## Running Examples
 
 ``` bash
 # ./hve-encode-raw-h264 <number-of-seconds> [device]
 ./hve-encode-raw-h264 10
+```
+
+``` bash
+# ./hve-encode-raw-hevc10 <number-of-seconds> [device]
+./hve-encode-raw-hevc10 10
 ```
 
 ### Troubleshooting
@@ -81,19 +86,21 @@ sudo apt-get install vainfo
 vainfo --display drm --device /dev/dri/renderD128
 ```
 
-Once you identify your Intel device run the example, e.g.
+Once you identify your Intel device run the examples, e.g.
 
 ```bash
 ./hve-encode-raw-h264 10 /dev/dri/renderD128
+./hve-encode-raw-hevc10 10 /dev/dri/renderD128
 ```
 
 ## Testing
 
-Play result raw H.264 file with FFmpeg:
+Play result raw H.264/HEVC file with FFmpeg:
 
 ``` bash
-# output goes to output.h264 file 
+# output goes to output.h264/output.hevc file
 ffplay output.h264
+ffplay output.hevc
 ```
 
 You should see procedurally generated video (moving through greyscale).
@@ -110,11 +117,11 @@ There are just 4 functions and 3 user-visible data types:
 
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE,
-					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
+				ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };
 
-	//later assuming PIXEL_FORMAT is "nv12" (you can use something else)
+	//later assuming PIXEL_FORMAT is "nv12" (you may use something else)
 
 	//fill with your stride (width including padding if any)
 	frame.linesize[0] = frame.linesize[1] = WIDTH;

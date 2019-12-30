@@ -59,7 +59,9 @@ struct hve *hve_init(const struct hve_config *config)
 		return hve_close_and_return_null(h);
 	}
 
-	if(!(codec = avcodec_find_encoder_by_name("h264_vaapi")))
+	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
+
+	if(!(codec = avcodec_find_encoder_by_name(encoder)))
 	{
 		fprintf(stderr, "hve: could not find encoder\n");
 		return hve_close_and_return_null(h);

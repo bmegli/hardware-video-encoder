@@ -47,12 +47,29 @@ struct hve;
  * @brief Encoder configuration
  *
  * The device can be:
- * - NULL (select automatically)
+ * - NULL or empty string (select automatically)
  * - point to valid device e.g. "/dev/dri/renderD128" for vaapi
  *
  * If you have multiple VAAPI devices (e.g. NVidia GPU + Intel) you may have
  * to specify Intel directly. NVidia will not work through VAAPI for encoding
  * (it works through VAAPI-VDPAU bridge and VDPAU is only for decoding).
+ *
+ * The encoder can be:
+ * - NULL or empty string for "h264_vaapi"
+ * - valid ffmpeg encoder
+ *
+ * You may check encoders supported by your hardware with ffmpeg:
+ * @code
+ * ffmpeg -encoders | grep vaapi
+ * @endcode
+ *
+ * Encoders typically can be:
+ * - h264_vaapi
+ * - hevc_vaapi
+ * - mjpeg_vaapi
+ * - mpeg2_vaapi
+ * - vp8_vaapi
+ * - vp9_vaapi
  *
  * The pixel_format (format of what you upload) typically can be:
  * - nv12 (this is generally safe choice)
@@ -62,16 +79,27 @@ struct hve;
  * - yuv422p
  * - rgb0
  * - bgr0
+ * - p010le
  *
  * There are no software color conversions in this library.
  *
  * For pixel format explanation see:
  * <a href="https://ffmpeg.org/doxygen/3.4/pixfmt_8h.html#a9a8e335cf3be472042bc9f0cf80cd4c5">FFmpeg pixel formats</a>
  *
- * The profile (H.264 profile) can typically be:
+ * The available profiles depend on used encoder. Use 0 to guess from input.
+ *
+ * For possible profiles see:
+ * <a href="https://ffmpeg.org/doxygen/3.4/avcodec_8h.html#ab424d258655424e4b1690e2ab6fcfc66">FFmpeg profiles</a>
+ *
+ * For H.264 profile can typically be:
  * - FF_PROFILE_H264_CONSTRAINED_BASELINE
  * - FF_PROFILE_H264_MAIN
  * - FF_PROFILE_H264_HIGH
+ * - ...
+ *
+ * For HEVC profile can typically be:
+ * - FF_PROFILE_HEVC_MAIN
+ * - FF_PROFILE_HEVC_MAIN_10 (10 bit channel precision)
  * - ...
  *
  * You may check profiles supported by your hardware with vainfo:
@@ -93,8 +121,9 @@ struct hve_config
 	int height; //!< height of the encoded frames
 	int framerate; //!< framerate of the encoded video
 	const char *device; //!< NULL / "" or device, e.g. "/dev/dri/renderD128"
-	const char *pixel_format; //!< NULL / "" for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p"
-	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH
+	const char *encoder; //!< NULL / "" or encoder, e.g. "h264_vaapi"
+	const char *pixel_format; //!< NULL / "" for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p", "p010le"
+	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH, FF_PROFILE_HEVC_MAIN, ...
 	int max_b_frames; //!< maximum number of B-frames between non-B-frames (disable if you need low latency)
 	int bit_rate; //!< the average bitrate in VBR mode
 };
