@@ -10,7 +10,7 @@
  */
 
 #include <stdio.h> //printf, fprintf
-#include <inttypes.h> //uint8_t
+#include <inttypes.h> //uint8_t, uint16_t
 
 #include "../hve.h"
 
@@ -19,8 +19,8 @@ const int HEIGHT=720;
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
-const char *PIXEL_FORMAT="nv12"; //NULL for default (NV12) or pixel format e.g. "rgb0"
-const int PROFILE=FF_PROFILE_H264_HIGH; //or FF_PROFILE_H264_MAIN, FF_PROFILE_H264_CONSTRAINED_BASELINE, ...
+const char *PIXEL_FORMAT="p010le"; //NULL for default (NV12) or pixel format e.g. "rgb0"
+const int PROFILE=FF_PROFILE_HEVC_MAIN_10; //or FF_PROFILE_H264_MAIN, FF_PROFILE_H264_CONSTRAINED_BASELINE, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
 const int BITRATE=0; //average bitrate in VBR
 
@@ -39,8 +39,8 @@ int main(int argc, char* argv[])
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
 	struct hve *hardware_encoder;
 
-	//prepare file for raw H.264 output
-	FILE *output_file = fopen("output.h264", "w+b");
+	//prepare file for raw HEVC output
+	FILE *output_file = fopen("output.hevc", "w+b");
 	if(output_file == NULL)
 		return fprintf(stderr, "unable to open file for output\n");
 
@@ -66,29 +66,31 @@ int main(int argc, char* argv[])
 int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 {
 	struct hve_frame frame = { 0 };
-	int frames=SECONDS*FRAMERATE, f, failed;
+	int frames=SECONDS*FRAMERATE, f, failed, i;
 
-	//we are working with NV12 because we specified nv12 pixel format
+	//we are working with P010LE because we specified p010le pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint8_t Y[WIDTH*HEIGHT]; //dummy NV12 luminance data
-	uint8_t color[WIDTH*HEIGHT/2]; //dummy NV12 color data
+	uint16_t Y[WIDTH*HEIGHT]; //dummy p010le luminance data (or p016le)
+	uint16_t color[WIDTH*HEIGHT/2]; //dummy p010le color data (or p016le)
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = frame.linesize[1] = WIDTH;
+	frame.linesize[0] = frame.linesize[1] = WIDTH*2;
 
 	//encoded data is returned in FFmpeg packet
 	AVPacket *packet;
 
 	for(f=0;f<frames;++f)
 	{
-		//prepare dummy image date, normally you would take it from camera or other source
-		memset(Y, f % 255, WIDTH*HEIGHT); //NV12 luminance (ride through greyscale)
-		memset(color, 128, WIDTH*HEIGHT/2); //NV12 UV (no color really)
-
-		//fill hve_frame with pointers to your data in NV12 pixel format
-		frame.data[0]=Y;
-		frame.data[1]=color;
+		//prepare dummy image data, normally you would take it from camera or other source
+		for(int i=0;i<WIDTH*HEIGHT;++i)
+			Y[i] = UINT16_MAX * f / frames; //linear interpolation between 0 and UINT16_MAX
+		for(int i=0;i<WIDTH*HEIGHT/2;++i)
+			color[i] = UINT16_MAX / 2; //dummy middle value for U/V, equals 128 << 8, equals 32768
+		//fill hve_frame with pointers to your data in P010LE pixel format
+		//note that we have actually prepared P016LE data but it is binary compatible with P010LE
+		frame.data[0]=(uint8_t*)Y;
+		frame.data[1]=(uint8_t*)color;
 
 		//encode this frame
 		if( hve_send_frame(hardware_encoder, &frame) != HVE_OK)
@@ -144,7 +146,7 @@ int hint_user_on_failure(char *argv[])
 void hint_user_on_success()
 {
 	printf("finished successfully\n");
-	printf("output written to \"outout.h264\" file\n");
+	printf("output written to \"outout.hevc\" file\n");
 	printf("test with:\n\n");
-	printf("ffplay output.h264\n");
+	printf("ffplay output.hevc\n");
 }
