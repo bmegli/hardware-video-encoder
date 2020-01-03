@@ -245,4 +245,6 @@ Since you are linking to FFmpeg libraries. Consider also `avcodec` and `avutil` 
 
 ### Library uses
 
-Realsense D400 camera infrared stream to H.264 - [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)
+Realsense D400 camera infrared stream to H.264 - [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)\
+Realsense D400 camera depth stream to HEVC Main10 - [realsense-depth-to-vaapi-hevc10](https://github.com/bmegli/realsense-depth-to-vaapi-hevc10)
+
