@@ -35,7 +35,7 @@ Intel VAAPI compatible hardware encoders ([Quick Sync Video](https://ark.intel.c
 Library depends on:
 - FFmpeg `avcodec` and `avutil` (at least 3.4 version)
 
-Works with system FFmpeg on Ubuntu 18.04 and doesn't on 16.04 (outdated FFmpeg).
+Works with system FFmpeg on Ubuntu 18.04 and doesn't on 16.04 (outdated FFmpeg and VAAPI ecosystem).
 
 ## Building Instructions
 
