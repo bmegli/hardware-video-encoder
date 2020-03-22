@@ -12,10 +12,13 @@
 #include <stdio.h> //printf, fprintf
 #include <inttypes.h> //uint8_t
 
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
 #include "../hve.h"
 
-const int WIDTH=1280;
-const int HEIGHT=720;
+const int WIDTH=640;
+const int HEIGHT=480;
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
@@ -31,7 +34,7 @@ int hint_user_on_failure(char *argv[]);
 void hint_user_on_success();
 
 int main(int argc, char* argv[])
-{
+{	
 	//get SECONDS and DEVICE from the command line
 	if( process_user_input(argc, argv) < 0 )
 		return -1;
@@ -72,11 +75,12 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	//we are working with NV12 because we specified nv12 pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint8_t Y[WIDTH*HEIGHT]; //dummy NV12 luminance data
-	uint8_t color[WIDTH*HEIGHT/2]; //dummy NV12 color data
+
+	Mat luminance(HEIGHT, WIDTH,CV_8UC1, Scalar(128));
+	Mat uv(HEIGHT/2,WIDTH,CV_8UC1, Scalar(128));
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = frame.linesize[1] = WIDTH;
+	frame.linesize[0] = frame.linesize[1] = luminance.step[0];
 
 	//encoded data is returned in FFmpeg packet
 	AVPacket *packet;
@@ -84,12 +88,12 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	for(f=0;f<frames;++f)
 	{
 		//prepare dummy image data, normally you would take it from camera or other source
-		memset(Y, f % 255, WIDTH*HEIGHT); //NV12 luminance (ride through greyscale)
-		memset(color, 128, WIDTH*HEIGHT/2); //NV12 UV (no color really)
+		//memset(Y, f % 255, WIDTH*HEIGHT); //NV12 luminance (ride through greyscale)
+		//memset(color, 128, WIDTH*HEIGHT/2); //NV12 UV (no color really)
 
 		//fill hve_frame with pointers to your data in NV12 pixel format
-		frame.data[0]=Y;
-		frame.data[1]=color;
+		frame.data[0]=luminance.ptr();
+		frame.data[1]=uv.ptr();
 
 		//encode this frame
 		if( hve_send_frame(hardware_encoder, &frame) != HVE_OK)
