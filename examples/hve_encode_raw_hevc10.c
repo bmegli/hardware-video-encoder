@@ -24,6 +24,7 @@ const char *PIXEL_FORMAT="p010le"; //NULL for default (nv12) or pixel format e.g
 const int PROFILE=FF_PROFILE_HEVC_MAIN_10; //or FF_PROFILE_HEVC_MAIN, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
 const int BITRATE=0; //average bitrate in VBR
+const int GOP_SIZE=0; //group of pictures size, 0 for default (determines keyframe period)
 
 int encoding_loop(struct hve *hardware_encoder, FILE *output_file);
 int process_user_input(int argc, char* argv[]);
@@ -37,7 +38,8 @@ int main(int argc, char* argv[])
 		return -1;
 
 	//prepare library data
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
+					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, GOP_SIZE};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw HEVC output

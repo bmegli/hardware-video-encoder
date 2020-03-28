@@ -75,6 +75,10 @@ struct hve *hve_init(const struct hve_config *config)
 
 	h->avctx->width = config->width;
 	h->avctx->height = config->height;
+
+	if(config->gop_size) //0 for default, -1 for intra only
+		h->avctx->gop_size = (config->gop_size != -1) ? config->gop_size : 0;
+
 	h->avctx->time_base = (AVRational){ 1, config->framerate };
 	h->avctx->framerate = (AVRational){ config->framerate, 1 };
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };

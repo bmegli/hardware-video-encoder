@@ -108,10 +108,15 @@ struct hve;
  * @endcode
  *
  * The max_b_frames controls the number of B frames.
- * Disable B frames if you need low latency (at the cost of space).
+ * Disable B frames if you need low latency (at the cost of quality/space).
  * The output will be delayed by max_b_frames+1 relative to the input.
  *
  * The bit_rate is average bitrate in VBR mode.
+ *
+ * The gop_size is size of group of pictures (e.g. I, P, B frames).
+ * Note that gop_size determines keyframe period.
+ * Setting gop_size equal to framerate results in one keyframe per second.
+ * Use 0 value for default, -1 for intra only.
  *
  * @see hve_init
  */
@@ -126,6 +131,7 @@ struct hve_config
 	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH, FF_PROFILE_HEVC_MAIN, ...
 	int max_b_frames; //!< maximum number of B-frames between non-B-frames (disable if you need low latency)
 	int bit_rate; //!< the average bitrate in VBR mode
+	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
 };
 
 /**
