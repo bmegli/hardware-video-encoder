@@ -31,7 +31,8 @@ struct hve
 };
 
 static int init_hwframes_context(struct hve* h, const struct hve_config *config);
-static struct hve *hve_close_and_return_null(struct hve *h);
+static struct hve *hve_close_and_return_null(struct hve *h, const char *msg);
+static int HVE_ERROR_MSG(const char *msg);
 
 // NULL on error
 struct hve *hve_init(const struct hve_config *config)
@@ -41,10 +42,8 @@ struct hve *hve_init(const struct hve_config *config)
 	AVCodec* codec = NULL;
 
 	if( ( h = (struct hve*)malloc(sizeof(struct hve))) == NULL )
-	{
-		fprintf(stderr, "hve: not enough memory for hve\n");
-		return NULL;
-	}
+		return hve_close_and_return_null(NULL, "not enough memory for hve");
+
 	*h = zero_hve; //set all members of dynamically allocated struct to 0 in a portable way
 
 	avcodec_register_all();
@@ -54,24 +53,15 @@ struct hve *hve_init(const struct hve_config *config)
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
 
 	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, device, NULL, 0) ) < 0)
-	{
-		fprintf(stderr, "hve: failed to create a VAAPI device\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "failed to create VAAPI device");
 
 	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
 
 	if(!(codec = avcodec_find_encoder_by_name(encoder)))
-	{
-		fprintf(stderr, "hve: could not find encoder\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "could not find encoder");
 
 	if(!(h->avctx = avcodec_alloc_context3(codec)))
-	{
-		fprintf(stderr, "hve: unable to alloc codec context\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "unable to alloc codec context");
 
 	h->avctx->width = config->width;
 	h->avctx->height = config->height;
@@ -95,27 +85,21 @@ struct hve *hve_init(const struct hve_config *config)
 	else if( ( h->sw_pix_fmt = av_get_pix_fmt(config->pixel_format) ) == AV_PIX_FMT_NONE )
 	{
 		fprintf(stderr, "hve: failed to find pixel format %s\n", config->pixel_format);
-		return hve_close_and_return_null(h);
+		return hve_close_and_return_null(h, NULL);
 	}
 
 	if((err = init_hwframes_context(h, config)) < 0)
-	{
-		fprintf(stderr, "hve: failed to set hwframe context\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "failed to set hwframe context");
 
 	AVDictionary *opts = NULL;
+
 	if(config->qp && av_dict_set_int(&opts, "qp", config->qp, 0) < 0)
-	{
-		fprintf(stderr, "hve: failed to initialize option dictionary (qp)\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "failed to initialize option dictionary (qp)");
 
 	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
 	{
-		fprintf(stderr, "hve: cannot open video encoder codec\n");
 		av_dict_free(&opts);
-		return hve_close_and_return_null(h);
+		return hve_close_and_return_null(h, "cannot open video encoder codec");
 	}
 
 	AVDictionaryEntry *de;
@@ -126,10 +110,7 @@ struct hve *hve_init(const struct hve_config *config)
 	av_dict_free(&opts);
 
 	if(!(h->sw_frame = av_frame_alloc()))
-	{
-		fprintf(stderr, "hve: av_frame_alloc not enough memory\n");
-		return hve_close_and_return_null(h);
-	}
+		return hve_close_and_return_null(h, "av_frame_alloc not enough memory");
 
 	h->sw_frame->width = config->width;
 	h->sw_frame->height = config->height;
@@ -155,10 +136,21 @@ void hve_close(struct hve* h)
 
 	free(h);
 }
-static struct hve *hve_close_and_return_null(struct hve *h)
+
+static struct hve *hve_close_and_return_null(struct hve *h, const char *msg)
 {
+	if(msg)
+		fprintf(stderr, "hve: %s\n", msg);
+
 	hve_close(h);
+
 	return NULL;
+}
+
+static int HVE_ERROR_MSG(const char *msg)
+{
+	fprintf(stderr, "hve: %s\n", msg);
+	return HVE_ERROR;
 }
 
 static int init_hwframes_context(struct hve* h, const struct hve_config *config)
@@ -168,23 +160,22 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 	int err = 0;
 
 	if(!(hw_frames_ref = av_hwframe_ctx_alloc(h->hw_device_ctx)))
-	{
-		fprintf(stderr, "hve: failed to create VAAPI frame context\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("failed to create VAAPI frame context");
+
 	frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
 	frames_ctx->format = AV_PIX_FMT_VAAPI;
 	frames_ctx->sw_format = h->sw_pix_fmt;
 	frames_ctx->width = config->width;
 	frames_ctx->height = config->height;
 	frames_ctx->initial_pool_size = 20;
+
 	if((err = av_hwframe_ctx_init(hw_frames_ref)) < 0)
 	{
 		fprintf(stderr, "hve: failed to initialize VAAPI frame context - \"%s\"\n", av_err2str(err));
-		fprintf(stderr, "hve: hint - make sure you are using supported pixel format\n");
 		av_buffer_unref(&hw_frames_ref);
-		return HVE_ERROR;
+		return HVE_ERROR_MSG("hint - make sure you are using supported pixel format");
 	}
+
 	h->avctx->hw_frames_ctx = av_buffer_ref(hw_frames_ref);
 	if(!h->avctx->hw_frames_ctx)
 		err = AVERROR(ENOMEM);
@@ -208,10 +199,8 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame)
 	if(frame == NULL)
 	{
 		if ( (err = avcodec_send_frame(avctx, NULL) ) < 0)
-		{
-			fprintf(stderr, "hve: error while flushing encoder\n");
-			return HVE_ERROR;
-		}
+			return HVE_ERROR_MSG("error while flushing encoder");
+
 		return HVE_OK;
 	}
 
@@ -220,34 +209,19 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame)
 	memcpy(sw_frame->data, frame->data, sizeof(frame->data));
 
 	if(!(h->hw_frame = av_frame_alloc()))
-	{
-		fprintf(stderr, "hve: av_frame_alloc not enough memory\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("av_frame_alloc not enough memory");
 
 	if((err = av_hwframe_get_buffer(avctx->hw_frames_ctx, h->hw_frame, 0)) < 0)
-	{
-		fprintf(stderr, "hve: av_hwframe_get_buffer error\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("av_hwframe_get_buffer error");
 
 	if(!h->hw_frame->hw_frames_ctx)
-	{
-		fprintf(stderr, "hve: hw_frame->hw_frames_ctx not enough memory\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("hw_frame->hw_frames_ctx not enough memory");
 
 	if((err = av_hwframe_transfer_data(h->hw_frame, sw_frame, 0)) < 0)
-	{
-		fprintf(stderr, "hve: error while transferring frame data to surface\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("error while transferring frame data to surface");
 
 	if((err = avcodec_send_frame(avctx, h->hw_frame)) < 0)
-	{
-		fprintf(stderr, "hve: send_frame error\n");
-		return HVE_ERROR;
-	}
+		return HVE_ERROR_MSG("send_frame error");
 
 	return HVE_OK;
 }
