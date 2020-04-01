@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoding C library header
  *
- * Copyright 2019 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -111,7 +111,12 @@ struct hve;
  * Disable B frames if you need low latency (at the cost of quality/space).
  * The output will be delayed by max_b_frames+1 relative to the input.
  *
- * The bit_rate is average bitrate in VBR mode.
+ * Set non zero bit_rate for average average bitrate and VBR mode.
+ *
+ * Set non zero qp for quantization parameter and CQP mode.
+ *
+ * If both bit_rate and qp are zero then CQP with default qp is used.
+ * If both are non-zero VBR mode will be used.
  *
  * The gop_size is size of group of pictures (e.g. I, P, B frames).
  * Note that gop_size determines keyframe period.
@@ -130,7 +135,8 @@ struct hve_config
 	const char *pixel_format; //!< NULL / "" for NV12 or format, e.g. "rgb0", "bgr0", "nv12", "yuv420p", "p010le"
 	int profile; //!< 0 to guess from input or profile e.g. FF_PROFILE_H264_MAIN, FF_PROFILE_H264_HIGH, FF_PROFILE_HEVC_MAIN, ...
 	int max_b_frames; //!< maximum number of B-frames between non-B-frames (disable if you need low latency)
-	int bit_rate; //!< the average bitrate in VBR mode
+	int bit_rate; //!< average bitrate in VBR mode (bit_rate != 0 and qp == 0)
+	int qp; //!< quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
 };
 

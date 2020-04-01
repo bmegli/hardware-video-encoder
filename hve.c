@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoding C library imlementation
  *
- * Copyright 2019 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -104,11 +104,26 @@ struct hve *hve_init(const struct hve_config *config)
 		return hve_close_and_return_null(h);
 	}
 
-	if((err = avcodec_open2(h->avctx, codec, NULL)) < 0)
+	AVDictionary *opts = NULL;
+	if(config->qp && av_dict_set_int(&opts, "qp", config->qp, 0) < 0)
 	{
-		fprintf(stderr, "hve: cannot open video encoder codec\n");
+		fprintf(stderr, "hve: failed to initialize option dictionary (qp)\n");
 		return hve_close_and_return_null(h);
 	}
+
+	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
+	{
+		fprintf(stderr, "hve: cannot open video encoder codec\n");
+		av_dict_free(&opts);
+		return hve_close_and_return_null(h);
+	}
+
+	AVDictionaryEntry *de;
+
+	while( (de = av_dict_get(opts, "", de, AV_DICT_IGNORE_SUFFIX)) )
+		fprintf(stderr, "hve: %s codec option not found\n", de->key);
+
+	av_dict_free(&opts);
 
 	if(!(h->sw_frame = av_frame_alloc()))
 	{

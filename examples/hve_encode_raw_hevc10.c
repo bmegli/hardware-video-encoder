@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoder library example of encoding through VAAPI to HEVC 10 bits per channel
  *
- * Copyright 2019 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -23,7 +23,8 @@ const char *ENCODER="hevc_vaapi";//NULL for default (h264_vaapi) or FFmpeg encod
 const char *PIXEL_FORMAT="p010le"; //NULL for default (nv12) or pixel format e.g. "rgb0", ...
 const int PROFILE=FF_PROFILE_HEVC_MAIN_10; //or FF_PROFILE_HEVC_MAIN, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
-const int BITRATE=0; //average bitrate in VBR
+const int BITRATE=0; //average bitrate in VBR mode (bit_rate != 0 and qp == 0)
+const int QP=0; //quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 const int GOP_SIZE=0; //group of pictures size, 0 for default (determines keyframe period)
 
 int encoding_loop(struct hve *hardware_encoder, FILE *output_file);
@@ -39,7 +40,7 @@ int main(int argc, char* argv[])
 
 	//prepare library data
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
-					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, GOP_SIZE};
+					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw HEVC output

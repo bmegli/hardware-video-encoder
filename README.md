@@ -3,7 +3,8 @@
 This library wraps hardware video encoding in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
-Currently it supports VAAPI and various codecs (H.264, HEVC, ...).
+Currently it supports VAAPI and various codecs (H.264, HEVC, ...).\
+VBR and CQP modes are supported (e.g. streaming and later editting).
 
 See library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
 
@@ -117,7 +118,7 @@ There are just 4 functions and 3 user-visible data types:
 
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE,
-				ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, GOP_SIZE};
+			ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };
 
