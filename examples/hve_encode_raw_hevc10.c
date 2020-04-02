@@ -26,6 +26,7 @@ const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to m
 const int BITRATE=0; //average bitrate in VBR mode (bit_rate != 0 and qp == 0)
 const int QP=0; //quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 const int GOP_SIZE=0; //group of pictures size, 0 for default (determines keyframe period)
+const int COMPRESSION_LEVEL=0; //speed-quality tradeoff, 0 for default, 1 for the highest quality, 7 for the fastest
 
 int encoding_loop(struct hve *hardware_encoder, FILE *output_file);
 int process_user_input(int argc, char* argv[]);
@@ -40,7 +41,7 @@ int main(int argc, char* argv[])
 
 	//prepare library data
 	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
-					PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE};
+			PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw HEVC output

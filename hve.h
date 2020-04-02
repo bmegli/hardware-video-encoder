@@ -123,6 +123,11 @@ struct hve;
  * Setting gop_size equal to framerate results in one keyframe per second.
  * Use 0 value for default, -1 for intra only.
  *
+ * The compression_level is speed-quality trade-off. Use 0 for driver default.
+ * For highest quality use 1, for fastest encoding use 7.
+ * The default is not highest quality so if you need it, set it explicitly to 1.
+ * The exact interpretation is hardware dependent.
+ *
  * @see hve_init
  */
 struct hve_config
@@ -138,6 +143,7 @@ struct hve_config
 	int bit_rate; //!< average bitrate in VBR mode (bit_rate != 0 and qp == 0)
 	int qp; //!< quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
+	int compression_level; //!< speed-quality tradeoff, 0 for default, 1 for the highest quality, 7 for the fastest
 };
 
 /**

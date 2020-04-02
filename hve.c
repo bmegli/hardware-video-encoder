@@ -78,6 +78,7 @@ struct hve *hve_init(const struct hve_config *config)
 		h->avctx->profile = config->profile;
 	h->avctx->max_b_frames = config->max_b_frames;
 	h->avctx->bit_rate = config->bit_rate;
+	h->avctx->compression_level = config->compression_level;
 
 	//try to find software pixel format that user wants to upload data in
 	if(config->pixel_format == NULL || config->pixel_format[0] == '\0')
