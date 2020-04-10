@@ -16,6 +16,8 @@
 
 const int WIDTH=1280;
 const int HEIGHT=720;
+const int INPUT_WIDTH=1280; //optional scaling if different from width
+const int INPUT_HEIGHT=720; //optional scaling if different from height
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
@@ -40,8 +42,8 @@ int main(int argc, char* argv[])
 		return -1;
 
 	//prepare library data
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
-			PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, INPUT_WIDTH, INPUT_HEIGHT, FRAMERATE,
+	DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw HEVC output
@@ -76,11 +78,11 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	//we are working with P010LE because we specified p010le pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint16_t Y[WIDTH*HEIGHT]; //dummy p010le luminance data (or p016le)
-	uint16_t color[WIDTH*HEIGHT/2]; //dummy p010le color data (or p016le)
+	uint16_t Y[INPUT_WIDTH*INPUT_HEIGHT]; //dummy p010le luminance data (or p016le)
+	uint16_t color[INPUT_WIDTH*INPUT_HEIGHT/2]; //dummy p010le color data (or p016le)
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = frame.linesize[1] = WIDTH*2;
+	frame.linesize[0] = frame.linesize[1] = INPUT_WIDTH*2;
 
 	//encoded data is returned in FFmpeg packet
 	AVPacket *packet;
@@ -88,9 +90,9 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	for(f=0;f<frames;++f)
 	{
 		//prepare dummy image data, normally you would take it from camera or other source
-		for(int i=0;i<WIDTH*HEIGHT;++i)
+		for(int i=0;i<INPUT_WIDTH*INPUT_HEIGHT;++i)
 			Y[i] = UINT16_MAX * f / frames; //linear interpolation between 0 and UINT16_MAX
-		for(int i=0;i<WIDTH*HEIGHT/2;++i)
+		for(int i=0;i<INPUT_WIDTH*INPUT_HEIGHT/2;++i)
 			color[i] = UINT16_MAX / 2; //dummy middle value for U/V, equals 128 << 8, equals 32768
 		//fill hve_frame with pointers to your data in P010LE pixel format
 		//note that we have actually prepared P016LE data but it is binary compatible with P010LE
@@ -152,7 +154,7 @@ int hint_user_on_failure(char *argv[])
 void hint_user_on_success()
 {
 	printf("finished successfully\n");
-	printf("output written to \"out.hevc\" file\n");
+	printf("output written to \"output.hevc\" file\n");
 	printf("test with:\n\n");
 	printf("ffplay output.hevc\n");
 }

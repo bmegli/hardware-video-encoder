@@ -16,6 +16,8 @@
 
 const int WIDTH=1280;
 const int HEIGHT=720;
+const int INPUT_WIDTH=1280; //optional hardware scaling if different from width
+const int INPUT_HEIGHT=720; //optional hardware scaling if different from height
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
@@ -40,8 +42,8 @@ int main(int argc, char* argv[])
 		return -1;
 
 	//prepare library data
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
-			PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, INPUT_WIDTH, INPUT_HEIGHT, FRAMERATE,
+	DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
 	struct hve *hardware_encoder;
 
 	//prepare file for raw H.264 output
@@ -76,11 +78,11 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	//we are working with NV12 because we specified nv12 pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint8_t Y[WIDTH*HEIGHT]; //dummy NV12 luminance data
-	uint8_t color[WIDTH*HEIGHT/2]; //dummy NV12 color data
+	uint8_t Y[INPUT_WIDTH*INPUT_HEIGHT]; //dummy NV12 luminance data
+	uint8_t color[INPUT_WIDTH*INPUT_HEIGHT/2]; //dummy NV12 color data
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = frame.linesize[1] = WIDTH;
+	frame.linesize[0] = frame.linesize[1] = INPUT_WIDTH;
 
 	//encoded data is returned in FFmpeg packet
 	AVPacket *packet;
@@ -88,8 +90,8 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	for(f=0;f<frames;++f)
 	{
 		//prepare dummy image data, normally you would take it from camera or other source
-		memset(Y, f % 255, WIDTH*HEIGHT); //NV12 luminance (ride through greyscale)
-		memset(color, 128, WIDTH*HEIGHT/2); //NV12 UV (no color really)
+		memset(Y, f % 255, INPUT_WIDTH*INPUT_HEIGHT); //NV12 luminance (ride through greyscale)
+		memset(color, 128, INPUT_WIDTH*INPUT_HEIGHT/2); //NV12 UV (no color really)
 
 		//fill hve_frame with pointers to your data in NV12 pixel format
 		frame.data[0]=Y;
@@ -149,7 +151,7 @@ int hint_user_on_failure(char *argv[])
 void hint_user_on_success()
 {
 	printf("finished successfully\n");
-	printf("output written to \"outout.h264\" file\n");
+	printf("output written to \"output.h264\" file\n");
 	printf("test with:\n\n");
 	printf("ffplay output.h264\n");
 }

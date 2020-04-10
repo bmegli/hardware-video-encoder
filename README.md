@@ -1,6 +1,6 @@
 # HVE - Hardware Video Encoder C library
 
-This library wraps hardware video encoding in a simple interface.
+This library wraps hardware video encoding and scaling in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
 Currently it supports VAAPI and various codecs (H.264, HEVC, ...).\
@@ -20,7 +20,7 @@ Raw encoding (H264, HEVC, ...):
 - raw dumping (H264, HEVC, ...)
 - ...
 
-Complex pipelines (muxing, scaling, color conversions, filtering) are beyond the scope of this library.
+Complex pipelines (muxing, filtering) are beyond the scope of this library.
 
 ## Platforms 
 
@@ -34,7 +34,7 @@ Intel VAAPI compatible hardware encoders ([Quick Sync Video](https://ark.intel.c
 ## Dependencies
 
 Library depends on:
-- FFmpeg `avcodec` and `avutil` (at least 3.4 version)
+- FFmpeg `avcodec`, `avutil`, `avfilter` (at least 3.4 version)
 
 Works with system FFmpeg on Ubuntu 18.04 and doesn't on 16.04 (outdated FFmpeg and VAAPI ecosystem).
 
@@ -46,7 +46,7 @@ Tested on Ubuntu 18.04.
 # update package repositories
 sudo apt-get update 
 # get avcodec and avutil (and ffmpeg for testing)
-sudo apt-get install ffmpeg libavcodec-dev libavutil-dev
+sudo apt-get install ffmpeg libavcodec-dev libavutil-dev libavfilter-dev
 # get compilers and make and cmake
 sudo apt-get install build-essential
 # get cmake - we need to specify libcurl4 for Ubuntu 18.04 dependencies problem
@@ -108,7 +108,7 @@ You should see procedurally generated video (moving through greyscale).
 
 ## Using
 
-See examples directory for a more complete and commented examples with error handling.
+See examples directory for more complete and commented examples with error handling.
 
 There are just 4 functions and 3 user-visible data types:
 - `hve_init`
@@ -117,15 +117,15 @@ There are just 4 functions and 3 user-visible data types:
 - `hve_close`
 
 ```C
-	struct hve_config hardware_config = {WIDTH, HEIGHT, FRAMERATE, DEVICE, ENCODER,
-		PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
+	struct hve_config hardware_config = {WIDTH, HEIGHT, INPUT_WIDTH, INPUT_HEIGHT, FRAMERATE,
+		DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES, BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL};
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };
 
 	//later assuming PIXEL_FORMAT is "nv12" (you may use something else)
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = frame.linesize[1] = WIDTH;
+	frame.linesize[0] = frame.linesize[1] = INPUT_WIDTH;
 	
 	AVPacket *packet; //encoded data is returned in FFmpeg packet
 	int failed; //error indicator while encoding
@@ -170,13 +170,13 @@ You have several options.
 
 For static linking of HVE and dynamic linking of FFmpeg libraries (easiest):
 - copy `hve.h` and `hve.c` to your project and add them in your favourite IDE
-- add `avcodec` and `avutil` to linked libraries in IDE project configuration
+- add `avcodec`, `avutil`, `avfilter` to linked libraries in IDE project configuration
 
 For dynamic linking of HVE and FFmpeg libraries:
 - place `hve.h` where compiler can find it (e.g. `make install` for `/usr/local/include/hve.h`)
 - place `libhve.so` where linker can find it (e.g. `make install` for `/usr/local/lib/libhve.so`)
 - make sure `/usr/local/...` is considered for libraries
-- add `hve`, `avcodec` and `avutil` to linked libraries in IDE project configuration
+- add `hve`, `avcodec`, `avutil`, `avfilter` to linked libraries in IDE project configuration
 - make sure `libhve.so` is reachable to you program at runtime (e.g. set `LD_LIBRARIES_PATH`)
 
 ### CMake
@@ -208,7 +208,7 @@ add_library(hve SHARED hardware-video-encoder/hve.c)
 
 add_executable(your-project main.cpp)
 target_include_directories(your-project PRIVATE hardware-video-encoder)
-target_link_libraries(your-project hve avcodec avutil)
+target_link_libraries(your-project hve avcodec avutil avfilter)
 ```
 
 For example see [realsense-ir-to-vaapi-h264](https://github.com/bmegli/realsense-ir-to-vaapi-h264)
@@ -219,14 +219,14 @@ Assuming your `main.c`/`main.cpp` and `hve.h`, `hve.c` are all in the same direc
 
 C
 ```bash
-gcc main.c hve.c -lavcodec -lavutil -o your-program
+gcc main.c hve.c -lavcodec -lavutil -lavfilter -o your-program
 ```
 
 C++
 ```bash
 gcc -c hve.c
 g++ -c main.cpp
-g++ hve.o main.o -lavcodec -lavutil -o your program
+g++ hve.o main.o -lavcodec -lavutil -lavfilter -o your program
 ```
 
 ## License
@@ -240,7 +240,7 @@ This is similiar to LGPL but more permissive:
 Like in LGPL, if you modify this library, you have to make your changes available.
 Making a github fork of the library with your changes satisfies those requirements perfectly.
 
-Since you are linking to FFmpeg libraries. Consider also `avcodec` and `avutil` licensing.
+Since you are linking to FFmpeg libraries consider also `avcodec`, `avutil` and `avfilter` licensing.
 
 ## Additional information
 

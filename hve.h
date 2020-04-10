@@ -1,5 +1,5 @@
 /*
- * HVE Hardware Video Encoding C library header
+ * HVE Hardware Video Encoder C library header
  *
  * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
@@ -45,6 +45,11 @@ struct hve;
 /**
  * @struct hve_config
  * @brief Encoder configuration
+ *
+ * The width and height are dimmensions of the encoded data.
+ *
+ * To enable hardware accelerated scaling specify non-zero
+ * input_width and input_height different from width and height.
  *
  * The device can be:
  * - NULL or empty string (select automatically)
@@ -134,6 +139,8 @@ struct hve_config
 {
 	int width; //!< width of the encoded frames
 	int height; //!< height of the encoded frames
+	int input_width; //!< optional scaling if non-zero and different from width
+	int input_height; //!< optional scaling if non-zero and different from height
 	int framerate; //!< framerate of the encoded video
 	const char *device; //!< NULL / "" or device, e.g. "/dev/dri/renderD128"
 	const char *encoder; //!< NULL / "" or encoder, e.g. "h264_vaapi"
@@ -205,6 +212,10 @@ void hve_close(struct hve* h);
  * After flushing it is not possible to reuse the encoder.
  *
  * The pixel format of the frame should match the one specified in hve_init.
+ *
+ * Hardware accelerated scaling is performed before encoding if non-zero
+ * input_width and input_height different from width and height were specified in hve_init.
+ *
  *
  * Perfomance hints:
  *  - don't copy data from your source, just pass the pointers to data planes

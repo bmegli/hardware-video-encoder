@@ -1,5 +1,5 @@
 /*
- * HVE Hardware Video Encoding C library imlementation
+ * HVE Hardware Video Encoder C library imlementation
  *
  * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
@@ -15,6 +15,8 @@
 #include <libavcodec/avcodec.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/pixdesc.h>
+#include <libavfilter/buffersink.h>
+#include <libavfilter/buffersrc.h>
 
 #include <stdio.h> //fprintf
 #include <stdlib.h> //malloc
@@ -22,17 +24,32 @@
 // internal library data passed around by the user
 struct hve
 {
-	AVBufferRef* hw_device_ctx;
 	enum AVPixelFormat sw_pix_fmt;
+	AVBufferRef* hw_device_ctx;
 	AVCodecContext* avctx;
-	AVFrame *sw_frame;
-	AVFrame *hw_frame;
+
+	//accelerated scaling related
+	AVFilterContext *buffersrc_ctx;
+	AVFilterContext *buffersink_ctx;
+	AVFilterGraph *filter_graph;
+
+	AVFrame *sw_frame; //software
+	AVFrame *hw_frame; //hardware
+	AVFrame *fr_frame; //filter
 	AVPacket enc_pkt;
 };
 
-static int init_hwframes_context(struct hve* h, const struct hve_config *config);
 static struct hve *hve_close_and_return_null(struct hve *h, const char *msg);
+
+static int init_hwframes_context(struct hve* h, const struct hve_config *config);
+static int init_hardware_scaling(struct hve *h, const struct hve_config *config);
+
 static int HVE_ERROR_MSG(const char *msg);
+static int HVE_ERROR_MSG_FILTER(AVFilterInOut *ins, AVFilterInOut *outs, const char *msg);
+
+static int hw_upload(struct hve *h);
+static int scale_encode(struct hve *h);
+static int encode(struct hve *h);
 
 // NULL on error
 struct hve *hve_init(const struct hve_config *config)
@@ -47,7 +64,8 @@ struct hve *hve_init(const struct hve_config *config)
 	*h = zero_hve; //set all members of dynamically allocated struct to 0 in a portable way
 
 	avcodec_register_all();
-	av_log_set_level(AV_LOG_VERBOSE);
+	avfilter_register_all();
+	av_log_set_level(AV_LOG_DEBUG);
 
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
@@ -110,11 +128,20 @@ struct hve *hve_init(const struct hve_config *config)
 
 	av_dict_free(&opts);
 
-	if(!(h->sw_frame = av_frame_alloc()))
-		return hve_close_and_return_null(h, "av_frame_alloc not enough memory");
+	if(config->input_width  && config->input_width  != config->width ||
+		config->input_height && config->input_height != config->height)
+		if(init_hardware_scaling(h, config) < 0)
+			return hve_close_and_return_null(h, "failed to init filter");
+	//from now on h->filter_graph may be used to check if scaling was requested
+	if(h->filter_graph)
+		if(!(h->fr_frame = av_frame_alloc()))
+			return hve_close_and_return_null(h, "av_frame_alloc not enough memory (filter frame)");
 
-	h->sw_frame->width = config->width;
-	h->sw_frame->height = config->height;
+	if(!(h->sw_frame = av_frame_alloc()))
+		return hve_close_and_return_null(h, "av_frame_alloc not enough memory (software frame");
+
+	h->sw_frame->width = config->input_width ? config->input_width : config->width;
+	h->sw_frame->height = config->input_height ? config->input_height : config->height;
 	h->sw_frame->format = h->sw_pix_fmt;
 
 	av_init_packet(&h->enc_pkt);
@@ -131,7 +158,11 @@ void hve_close(struct hve* h)
 
 	av_packet_unref(&h->enc_pkt);
 	av_frame_free(&h->sw_frame);
+	av_frame_free(&h->fr_frame);
 	av_frame_free(&h->hw_frame);
+
+	avfilter_graph_free(&h->filter_graph);
+
 	avcodec_free_context(&h->avctx);
 	av_buffer_unref(&h->hw_device_ctx);
 
@@ -148,12 +179,6 @@ static struct hve *hve_close_and_return_null(struct hve *h, const char *msg)
 	return NULL;
 }
 
-static int HVE_ERROR_MSG(const char *msg)
-{
-	fprintf(stderr, "hve: %s\n", msg);
-	return HVE_ERROR;
-}
-
 static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 {
 	AVBufferRef* hw_frames_ref;
@@ -166,8 +191,10 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 	frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
 	frames_ctx->format = AV_PIX_FMT_VAAPI;
 	frames_ctx->sw_format = h->sw_pix_fmt;
-	frames_ctx->width = config->width;
-	frames_ctx->height = config->height;
+
+	frames_ctx->width = config->input_width ? config->input_width : config->width;
+	frames_ctx->height = config->input_height ? config->input_height : config->height;
+
 	frames_ctx->initial_pool_size = 20;
 
 	if((err = av_hwframe_ctx_init(hw_frames_ref)) < 0)
@@ -185,12 +212,97 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 	return err == 0 ? HVE_OK : HVE_ERROR;
 }
 
-int hve_send_frame(struct hve *h,struct hve_frame *frame)
+static int init_hardware_scaling(struct hve *h, const struct hve_config *config)
 {
-	AVCodecContext* avctx=h->avctx;
-	AVFrame *sw_frame=h->sw_frame;
+	const AVFilter *buffersrc, *buffersink;
+	AVFilterInOut *ins, *outs;
+	char temp_str[128];
 	int err = 0;
 
+	if( !(buffersrc = avfilter_get_by_name("buffer")) )
+		return HVE_ERROR_MSG("unable to find filter 'buffer'");
+
+	if( !(buffersink = avfilter_get_by_name("buffersink")) )
+		return HVE_ERROR_MSG("unable to find filter 'buffersink'");
+
+	//allocate memory
+	ins = avfilter_inout_alloc();
+	outs = avfilter_inout_alloc();
+	h->filter_graph = avfilter_graph_alloc(); //has to be fred with HVE cleanup
+
+	if (!ins || !outs || !h->filter_graph)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "unable to allocate memory for the filter");
+
+	//prepare filter source
+	snprintf(temp_str, sizeof(temp_str), "video_size=%dx%d:pix_fmt=%d:time_base=1/%d:pixel_aspect=1/1",
+		config->input_width, config->input_height, AV_PIX_FMT_VAAPI, config->framerate);
+
+	if(avfilter_graph_create_filter(&h->buffersrc_ctx, buffersrc, "in", temp_str, NULL, h->filter_graph) < 0)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "cannot create buffer source");
+
+	outs->name       = av_strdup("in");
+	outs->filter_ctx = h->buffersrc_ctx;
+	outs->pad_idx    = 0;
+	outs->next       = NULL;
+
+	//initialize buffersrc with hw frames context
+	AVBufferSrcParameters *par;
+
+	if (!(par = av_buffersrc_parameters_alloc()) )
+		return HVE_ERROR_MSG_FILTER(ins, outs, "unable to allocate memory for the filter (params)");
+
+	par->hw_frames_ctx = h->avctx->hw_frames_ctx;
+
+	err = av_buffersrc_parameters_set(h->buffersrc_ctx, par);
+	av_free(par);
+	if(err < 0)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "unable to initialize buffersrc with hw frames context");
+
+	//prepare filter sink
+	if(avfilter_graph_create_filter(&h->buffersink_ctx, buffersink, "out", NULL, NULL, h->filter_graph) < 0)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "cannot create buffer sink");
+
+	ins->name       = av_strdup("out");
+	ins->filter_ctx = h->buffersink_ctx;
+	ins->pad_idx    = 0;
+	ins->next       = NULL;
+
+	//the actual description of the graph
+	snprintf(temp_str, sizeof(temp_str), "format=vaapi,scale_vaapi=w=%d:h=%d", config->width, config->height);
+
+	if(avfilter_graph_parse_ptr(h->filter_graph, temp_str, &ins, &outs, NULL) < 0)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "failed to parse filter graph description");
+
+	for (int i = 0; i < h->filter_graph->nb_filters; i++)
+		if( !(h->filter_graph->filters[i]->hw_device_ctx = av_buffer_ref(h->hw_device_ctx)) )
+			return HVE_ERROR_MSG_FILTER(ins, outs, "not enough memory to reference hw device ctx by filters");
+
+	if(avfilter_graph_config(h->filter_graph, NULL) < 0)
+		return HVE_ERROR_MSG_FILTER(ins, outs, "failed to configure filter graph");
+
+	avfilter_inout_free(&ins);
+	avfilter_inout_free(&outs);
+
+	return HVE_OK;
+}
+
+static int HVE_ERROR_MSG(const char *msg)
+{
+	fprintf(stderr, "hve: %s\n", msg);
+	return HVE_ERROR;
+}
+
+static int HVE_ERROR_MSG_FILTER(AVFilterInOut *ins, AVFilterInOut *outs, const char *msg)
+{
+	avfilter_inout_free(&ins);
+	avfilter_inout_free(&outs);
+	//h->filter_graph is fred in reaction to init_hardware_scaling HVE_ERROR return
+
+	return HVE_ERROR_MSG(msg);
+}
+
+int hve_send_frame(struct hve *h,struct hve_frame *frame)
+{
 	//note - in case hardware frame preparation fails, the frame is fred:
 	// - here (this is next user try)
 	// - or in av_close (this is user decision to terminate)
@@ -199,29 +311,75 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame)
 	// NULL frame is used for flushing the encoder
 	if(frame == NULL)
 	{
-		if ( (err = avcodec_send_frame(avctx, NULL) ) < 0)
+		if(h->filter_graph)
+			if(av_buffersrc_add_frame_flags(h->buffersrc_ctx, NULL, AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_PUSH))
+				fprintf(stderr, "hve: error while marking filter EOF\n");
+
+		if (avcodec_send_frame(h->avctx, NULL)  < 0)
 			return HVE_ERROR_MSG("error while flushing encoder");
 
 		return HVE_OK;
 	}
 
 	//this just copies a few ints and pointers, not the actual frame data
-	memcpy(sw_frame->linesize, frame->linesize, sizeof(frame->linesize));
-	memcpy(sw_frame->data, frame->data, sizeof(frame->data));
+	memcpy(h->sw_frame->linesize, frame->linesize, sizeof(frame->linesize));
+	memcpy(h->sw_frame->data, frame->data, sizeof(frame->data));
 
+	if(hw_upload(h) < 0)
+		return HVE_ERROR_MSG("failed to upload frame data to hardware");
+
+	if(h->filter_graph)
+		return scale_encode(h);
+
+	return encode(h);
+}
+
+static int hw_upload(struct hve *h)
+{
 	if(!(h->hw_frame = av_frame_alloc()))
-		return HVE_ERROR_MSG("av_frame_alloc not enough memory");
+		return HVE_ERROR_MSG("av_frame_alloc not enough memory for hw_frame");
 
-	if((err = av_hwframe_get_buffer(avctx->hw_frames_ctx, h->hw_frame, 0)) < 0)
+	if(av_hwframe_get_buffer(h->avctx->hw_frames_ctx, h->hw_frame, 0) < 0)
 		return HVE_ERROR_MSG("av_hwframe_get_buffer error");
 
 	if(!h->hw_frame->hw_frames_ctx)
 		return HVE_ERROR_MSG("hw_frame->hw_frames_ctx not enough memory");
 
-	if((err = av_hwframe_transfer_data(h->hw_frame, sw_frame, 0)) < 0)
+	if(av_hwframe_transfer_data(h->hw_frame, h->sw_frame, 0) < 0)
 		return HVE_ERROR_MSG("error while transferring frame data to surface");
 
-	if((err = avcodec_send_frame(avctx, h->hw_frame)) < 0)
+	return HVE_OK;
+}
+
+static int scale_encode(struct hve *h)
+{
+	int err;
+
+	if (av_buffersrc_add_frame_flags(h->buffersrc_ctx, h->hw_frame, AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_PUSH) < 0)
+		return HVE_ERROR_MSG("failed to push frame to filtergraph");
+
+	while((err = av_buffersink_get_frame(h->buffersink_ctx, h->fr_frame)) >= 0)
+	{
+		if(avcodec_send_frame(h->avctx, h->fr_frame) < 0)
+		{
+			av_frame_unref(h->fr_frame);
+			return HVE_ERROR_MSG("send_frame error (after scaling)");
+		}
+		av_frame_unref(h->fr_frame);
+	}
+
+	if(err == AVERROR(EAGAIN) || err == AVERROR_EOF)
+		return HVE_OK;
+
+	if(err < 0)
+		return HVE_ERROR_MSG("failed to get frame from filtergraph");
+
+	return HVE_OK;
+}
+
+static int encode(struct hve *h)
+{
+	if(avcodec_send_frame(h->avctx, h->hw_frame) < 0)
 		return HVE_ERROR_MSG("send_frame error");
 
 	return HVE_OK;

@@ -5,7 +5,7 @@ project(
 )
 
 add_library(hve hve.c)
-target_link_libraries(hve avcodec avutil)
+target_link_libraries(hve avcodec avutil avfilter)
 install(TARGETS hve DESTINATION lib)
 install(FILES hve.h DESTINATION include)
 
