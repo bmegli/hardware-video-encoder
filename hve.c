@@ -65,7 +65,7 @@ struct hve *hve_init(const struct hve_config *config)
 
 	avcodec_register_all();
 	avfilter_register_all();
-	av_log_set_level(AV_LOG_DEBUG);
+	av_log_set_level(AV_LOG_VERBOSE);
 
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
