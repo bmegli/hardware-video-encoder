@@ -121,15 +121,15 @@ struct hve *hve_init(const struct hve_config *config)
 		return hve_close_and_return_null(h, "cannot open video encoder codec");
 	}
 
-	AVDictionaryEntry *de;
+	AVDictionaryEntry *de = NULL;
 
 	while( (de = av_dict_get(opts, "", de, AV_DICT_IGNORE_SUFFIX)) )
 		fprintf(stderr, "hve: %s codec option not found\n", de->key);
 
 	av_dict_free(&opts);
 
-	if(config->input_width  && config->input_width  != config->width ||
-		config->input_height && config->input_height != config->height)
+	if( (config->input_width  && config->input_width  != config->width) ||
+	    (config->input_height && config->input_height != config->height) )
 		if(init_hardware_scaling(h, config) < 0)
 			return hve_close_and_return_null(h, "failed to init filter");
 	//from now on h->filter_graph may be used to check if scaling was requested
@@ -273,7 +273,7 @@ static int init_hardware_scaling(struct hve *h, const struct hve_config *config)
 	if(avfilter_graph_parse_ptr(h->filter_graph, temp_str, &ins, &outs, NULL) < 0)
 		return HVE_ERROR_MSG_FILTER(ins, outs, "failed to parse filter graph description");
 
-	for (int i = 0; i < h->filter_graph->nb_filters; i++)
+	for (unsigned i = 0; i < h->filter_graph->nb_filters; i++)
 		if( !(h->filter_graph->filters[i]->hw_device_ctx = av_buffer_ref(h->hw_device_ctx)) )
 			return HVE_ERROR_MSG_FILTER(ins, outs, "not enough memory to reference hw device ctx by filters");
 
