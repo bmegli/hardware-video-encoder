@@ -94,6 +94,37 @@ Once you identify your Intel device run the examples, e.g.
 ./hve-encode-raw-hevc10 10 /dev/dri/renderD128
 ```
 
+Some devices are supported by more than one driver. Functionality differs.
+
+```bash
+# list the drivers (typical location)
+ls /usr/lib/x86_64-linux-gnu/dri/
+```
+
+You may force the driver to use, e.g.
+
+```
+# in Ubuntu 20.04 there are two drivers supporting Intel between gen8+ and gen9.5
+# functionality differs
+# e.g. HEVC encoding support comes later with open source build of iHD (generation wise)
+LIBVA_DRIVER_NAME=i965 vainfo --display drm --device /dev/dri/renderD128
+LIBVA_DRIVER_NAME=iHD vainfo --display drm --device /dev/dri/renderD128
+```
+
+With support depending on hardware, driver (type and version), libva, and FFmpeg the situation is complex.
+
+For example there are two versions of LattePanda Alpha (KabyLake m3-7Y30 and AmberLake Y m3-8100Y):
+- m3-7Y30 by default works in Ubuntu 18.04
+- m3-8100Y by default doesn't in Ubuntu 18.04 
+- m3-8100Y by default works in Ubuntu 20.04 with iHD driver and without HEVC encoding
+- m3-8100Y with forced i965 driver works in Ubuntu 20.04 with HEVC and HEVC encoding
+
+So for m3-8100Y and HEVC encoding in Ubuntu 20.04 you would force the driver
+
+```bash
+LIBVA_DRIVER_NAME=i965 ./hve-encode-raw-hevc10 10 /dev/dri/renderD128
+```
+
 ## Testing
 
 Play result raw H.264/HEVC file with FFmpeg:
