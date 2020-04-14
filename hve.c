@@ -131,7 +131,7 @@ struct hve *hve_init(const struct hve_config *config)
 	if( (config->input_width  && config->input_width  != config->width) ||
 	    (config->input_height && config->input_height != config->height) )
 		if(init_hardware_scaling(h, config) < 0)
-			return hve_close_and_return_null(h, "failed to init filter");
+			return hve_close_and_return_null(h, "failed to initialize hardware scaling");
 	//from now on h->filter_graph may be used to check if scaling was requested
 	if(h->filter_graph)
 		if(!(h->fr_frame = av_frame_alloc()))
@@ -353,19 +353,18 @@ static int hw_upload(struct hve *h)
 
 static int scale_encode(struct hve *h)
 {
-	int err;
+	int err, err2;
 
 	if (av_buffersrc_add_frame_flags(h->buffersrc_ctx, h->hw_frame, AV_BUFFERSRC_FLAG_KEEP_REF | AV_BUFFERSRC_FLAG_PUSH) < 0)
 		return HVE_ERROR_MSG("failed to push frame to filtergraph");
 
 	while((err = av_buffersink_get_frame(h->buffersink_ctx, h->fr_frame)) >= 0)
 	{
-		if(avcodec_send_frame(h->avctx, h->fr_frame) < 0)
-		{
-			av_frame_unref(h->fr_frame);
-			return HVE_ERROR_MSG("send_frame error (after scaling)");
-		}
+		err2 = avcodec_send_frame(h->avctx, h->fr_frame);
 		av_frame_unref(h->fr_frame);
+
+		if(err2 < 0)
+			return HVE_ERROR_MSG("send_frame error (after scaling)");
 	}
 
 	if(err == AVERROR(EAGAIN) || err == AVERROR_EOF)
