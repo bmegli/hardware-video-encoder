@@ -22,7 +22,7 @@ const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
 const char *ENCODER=NULL;//NULL for default (h264_vaapi) or FFmpeg encoder e.g. "hevc_vaapi", ...
-const char *PIXEL_FORMAT="bgr0"; //NULL for default (NV12) or pixel format e.g. "rgb0"
+const char *PIXEL_FORMAT="yuyv422"; //NULL for default (NV12) or pixel format e.g. "rgb0"
 const int PROFILE=FF_PROFILE_H264_HIGH; //or FF_PROFILE_HEVC_MAIN, FF_PROFILE_H264_CONSTRAINED_BASELINE, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
 const int BITRATE=0; //average bitrate in VBR mode (bit_rate != 0 and qp == 0)
@@ -75,13 +75,13 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	struct hve_frame frame = { 0 };
 	int frames=SECONDS*FRAMERATE, f, failed;
 
-	//we are working with BGR0 because we specified bgr0 pixel format
+	//we are working with YUYV422 because we specified yuyv422 pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint8_t BGR0[INPUT_WIDTH*INPUT_HEIGHT*sizeof(uint32_t)]; //dummy BGR0 data
+	uint8_t YUYV422[INPUT_WIDTH*INPUT_HEIGHT*sizeof(uint16_t)]; //dummy YUYV422 data
 
 	//fill with your stride (width including padding if any)
-	frame.linesize[0] = INPUT_WIDTH * sizeof(uint32_t);
+	frame.linesize[0] = INPUT_WIDTH * sizeof(uint16_t);
 
 	//encoded data is returned in FFmpeg packet
 	AVPacket *packet;
@@ -89,10 +89,10 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	for(f=0;f<frames;++f)
 	{
 		//prepare dummy image data, normally you would take it from camera or other source
-		memset(BGR0, f % 255, INPUT_WIDTH*INPUT_HEIGHT * sizeof(uint32_t)); //BGR0 data (ride through greyscale)
+		memset(YUYV422, f % 255, INPUT_WIDTH*INPUT_HEIGHT * sizeof(uint16_t));
 
 		//fill hve_frame with pointers to your data in BGR0 pixel format
-		frame.data[0]=BGR0;
+		frame.data[0]=YUYV422;
 
 		//encode this frame
 		if( hve_send_frame(hardware_encoder, &frame) != HVE_OK)
