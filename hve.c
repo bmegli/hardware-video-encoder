@@ -44,6 +44,8 @@ static struct hve *hve_close_and_return_null(struct hve *h, const char *msg);
 static int init_hwframes_context(struct hve* h, const struct hve_config *config);
 static int init_hardware_scaling(struct hve *h, const struct hve_config *config);
 
+static int hve_pixel_format_depth( enum AVPixelFormat pix_fmt, int *depth);
+
 static int HVE_ERROR_MSG(const char *msg);
 static int HVE_ERROR_MSG_FILTER(AVFilterInOut *ins, AVFilterInOut *outs, const char *msg);
 
@@ -94,9 +96,12 @@ struct hve *hve_init(const struct hve_config *config)
 
 	if(config->profile)
 		h->avctx->profile = config->profile;
+
 	h->avctx->max_b_frames = config->max_b_frames;
 	h->avctx->bit_rate = config->bit_rate;
-	h->avctx->compression_level = config->compression_level;
+
+	if(config->compression_level)
+		h->avctx->compression_level = config->compression_level;
 
 	//try to find software pixel format that user wants to upload data in
 	if(config->pixel_format == NULL || config->pixel_format[0] == '\0')
@@ -183,19 +188,35 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 {
 	AVBufferRef* hw_frames_ref;
 	AVHWFramesContext* frames_ctx = NULL;
-	int err = 0;
+	int err = 0, depth;
 
 	if(!(hw_frames_ref = av_hwframe_ctx_alloc(h->hw_device_ctx)))
 		return HVE_ERROR_MSG("failed to create VAAPI frame context");
 
 	frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
 	frames_ctx->format = AV_PIX_FMT_VAAPI;
-	frames_ctx->sw_format = h->sw_pix_fmt;
 
 	frames_ctx->width = config->input_width ? config->input_width : config->width;
 	frames_ctx->height = config->input_height ? config->input_height : config->height;
 
 	frames_ctx->initial_pool_size = 20;
+
+	// Starting from FFmpeg 4.1, avcodec will not fall back to NV12 automatically
+	// when using non 4:2:0 software pixel format not supported by codec.
+	// Here, instead of using h->sw_pix_fmt we always fall to P010LE for 10 bit
+	// input and NV12 otherwise which may possibly lead to some loss of information
+	// on modern hardware supporting 4:2:2 and 4:4:4 chroma subsampling
+	// (e.g. HEVC with >= IceLake)
+	// See:
+	// https://github.com/bmegli/hardware-video-encoder/issues/26
+
+	frames_ctx->sw_format = AV_PIX_FMT_NV12;
+
+	if(hve_pixel_format_depth(h->sw_pix_fmt, &depth) != HVE_OK)
+		return HVE_ERROR_MSG("failed to get pixel format depth");
+
+	if(depth == 10)
+		frames_ctx->sw_format = AV_PIX_FMT_P010LE;
 
 	if((err = av_hwframe_ctx_init(hw_frames_ref)) < 0)
 	{
@@ -282,6 +303,22 @@ static int init_hardware_scaling(struct hve *h, const struct hve_config *config)
 
 	avfilter_inout_free(&ins);
 	avfilter_inout_free(&outs);
+
+	return HVE_OK;
+}
+
+static int hve_pixel_format_depth(enum AVPixelFormat pix_fmt, int *depth)
+{
+	const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
+	int i;
+
+	if (!desc || !desc->nb_components)
+		return HVE_ERROR;
+
+	*depth = -INT_MAX;
+
+	for (i = 0; i < desc->nb_components; i++)
+		*depth = FFMAX(desc->comp[i].depth, *depth);
 
 	return HVE_OK;
 }
