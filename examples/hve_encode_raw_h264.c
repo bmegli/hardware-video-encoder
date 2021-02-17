@@ -78,7 +78,7 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 	//we are working with BGR0 because we specified bgr0 pixel format
 	//when calling hve_init, in principle we could use other format
 	//if hardware supported it (e.g. RGB0 is supported on my Intel)
-	uint8_t BGR0[INPUT_WIDTH*INPUT_HEIGHT*sizeof(uint32_t)]; //dummy BGR0 data
+	uint32_t BGR0[INPUT_WIDTH*INPUT_HEIGHT]; //dummy BGR0 data
 
 	//fill with your stride (width including padding if any)
 	frame.linesize[0] = INPUT_WIDTH * sizeof(uint32_t);
@@ -88,11 +88,11 @@ int encoding_loop(struct hve *hardware_encoder, FILE *output_file)
 
 	for(f=0;f<frames;++f)
 	{
-		//prepare dummy image data, normally you would take it from camera or other source
-		memset(BGR0, f % 255, INPUT_WIDTH*INPUT_HEIGHT * sizeof(uint32_t)); //BGR0 data (ride through greyscale)
+		for(int i = 0; i < INPUT_WIDTH * INPUT_HEIGHT; ++i)
+			BGR0[i] = f % 255; //ride through blue
 
 		//fill hve_frame with pointers to your data in BGR0 pixel format
-		frame.data[0]=BGR0;
+		frame.data[0] = (uint8_t*)BGR0;
 
 		//encode this frame
 		if( hve_send_frame(hardware_encoder, &frame) != HVE_OK)
