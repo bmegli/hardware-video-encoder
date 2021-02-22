@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoder C library imlementation
  *
- * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2021 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -119,6 +119,9 @@ struct hve *hve_init(const struct hve_config *config)
 
 	if(config->qp && av_dict_set_int(&opts, "qp", config->qp, 0) < 0)
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (qp)");
+
+	if(config->low_power && av_dict_set_int(&opts, "low_power", config->low_power != 0, 0) < 0)
+		return hve_close_and_return_null(h, "failed to initialize option dictionary (low_power)");
 
 	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
 	{

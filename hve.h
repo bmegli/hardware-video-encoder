@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoder C library header
  *
- * Copyright 2019-2020 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2021 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -133,6 +133,19 @@ struct hve;
  * The default is not highest quality so if you need it, set it explicitly to 1.
  * The exact interpretation is hardware dependent.
  *
+ * The low_power option enables alternative encoding path available on some Intel platforms.
+ *
+ * You may check support with vainfo (entrypoints ending with LP):
+ * @code
+ * vainfo --display drm --device /dev/dri/renderDXYZ
+ * @endcode
+ *
+ * Low power encoding supports limited subset of features.
+ *
+ * Bitrate control with low power encoding requires loaded HuC.
+ * For the details on loading HuC see:
+ * <a href="https://github.com/bmegli/hardware-video-encoder/wiki/GuC-and-HuC">Loading GuC and HuC</a>
+ *
  * @see hve_init
  */
 struct hve_config
@@ -151,6 +164,7 @@ struct hve_config
 	int qp; //!< quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
 	int compression_level; //!< speed-quality tradeoff, 0 for default, 1 for the highest quality, 7 for the fastest
+	int low_power; //!< alternative limited low-power encoding if non-zero
 };
 
 /**
