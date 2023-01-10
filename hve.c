@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoder C library imlementation
  *
- * Copyright 2019-2021 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2023 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -20,6 +20,7 @@
 
 #include <stdio.h> //fprintf
 #include <stdlib.h> //malloc
+#include <string.h> //strstr
 
 // internal library data passed around by the user
 struct hve
@@ -44,6 +45,8 @@ static struct hve *hve_close_and_return_null(struct hve *h, const char *msg);
 static int init_hwframes_context(struct hve* h, const struct hve_config *config);
 static int init_hardware_scaling(struct hve *h, const struct hve_config *config);
 
+static enum AVHWDeviceType hve_hw_device_type(const char *encoder);
+static enum AVPixelFormat hve_hw_pixel_format(enum AVHWDeviceType type);
 static int hve_pixel_format_depth( enum AVPixelFormat pix_fmt, int *depth);
 
 static int HVE_ERROR_MSG(const char *msg);
@@ -65,17 +68,22 @@ struct hve *hve_init(const struct hve_config *config)
 
 	*h = zero_hve; //set all members of dynamically allocated struct to 0 in a portable way
 
-	avcodec_register_all();
-	avfilter_register_all();
+	avcodec_register_all(); // for compatibility with FFmpeg 3.4 (e.g. Ubuntu 18.04)
+	avfilter_register_all();// for compatibility with FFmpeg 3.4 (e.g. Ubuntu 18.04)
 	av_log_set_level(AV_LOG_VERBOSE);
 
+	//specified encoder or NULL / empty string for H.264 VAAPI
+	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
 
-	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, device, NULL, 0) ) < 0)
-		return hve_close_and_return_null(h, "failed to create VAAPI device");
+	enum AVHWDeviceType device_type = hve_hw_device_type(encoder);
 
-	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
+	if(device_type == AV_HWDEVICE_TYPE_NONE)
+		return hve_close_and_return_null(h, "hve doesn't support selected encoder");
+
+	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, device_type, device, NULL, 0) ) < 0)
+		return hve_close_and_return_null(h, "failed to create hardware device context");
 
 	if(!(codec = avcodec_find_encoder_by_name(encoder)))
 		return hve_close_and_return_null(h, "could not find encoder");
@@ -92,7 +100,10 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->time_base = (AVRational){ 1, config->framerate };
 	h->avctx->framerate = (AVRational){ config->framerate, 1 };
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };
-	h->avctx->pix_fmt = AV_PIX_FMT_VAAPI;
+	h->avctx->pix_fmt = hve_hw_pixel_format(device_type);
+
+	if(h->avctx->pix_fmt == AV_PIX_FMT_NONE)
+		return hve_close_and_return_null(h, "could not find hardware pixel format for encoder");
 
 	if(config->profile)
 		h->avctx->profile = config->profile;
@@ -194,10 +205,10 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 	int err = 0, depth;
 
 	if(!(hw_frames_ref = av_hwframe_ctx_alloc(h->hw_device_ctx)))
-		return HVE_ERROR_MSG("failed to create VAAPI frame context");
+		return HVE_ERROR_MSG("failed to create hardware frame context");
 
 	frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
-	frames_ctx->format = AV_PIX_FMT_VAAPI;
+	frames_ctx->format = h->avctx->pix_fmt; //e.g. AV_PIX_FMT_VAAPI, AV_PIX_FMT_CUDA
 
 	frames_ctx->width = config->input_width ? config->input_width : config->width;
 	frames_ctx->height = config->input_height ? config->input_height : config->height;
@@ -223,7 +234,7 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 
 	if((err = av_hwframe_ctx_init(hw_frames_ref)) < 0)
 	{
-		fprintf(stderr, "hve: failed to initialize VAAPI frame context - \"%s\"\n", av_err2str(err));
+		fprintf(stderr, "hve: failed to initialize hardware frame context - \"%s\"\n", av_err2str(err));
 		av_buffer_unref(&hw_frames_ref);
 		return HVE_ERROR_MSG("hint - make sure you are using supported pixel format");
 	}
@@ -308,6 +319,26 @@ static int init_hardware_scaling(struct hve *h, const struct hve_config *config)
 	avfilter_inout_free(&outs);
 
 	return HVE_OK;
+}
+
+static enum AVHWDeviceType hve_hw_device_type(const char *encoder)
+{
+	if(strstr(encoder, "vaapi"))
+		return AV_HWDEVICE_TYPE_VAAPI;
+	else if(strstr(encoder, "nvenc"))
+		return AV_HWDEVICE_TYPE_CUDA;
+
+	return AV_HWDEVICE_TYPE_NONE;
+}
+
+static enum AVPixelFormat hve_hw_pixel_format(enum AVHWDeviceType type)
+{
+	if(type == AV_HWDEVICE_TYPE_VAAPI)
+		return AV_PIX_FMT_VAAPI;
+	else if(type == AV_PIX_FMT_CUDA);
+		return AV_PIX_FMT_CUDA;
+
+	return AV_PIX_FMT_NONE;
 }
 
 static int hve_pixel_format_depth(enum AVPixelFormat pix_fmt, int *depth)

@@ -1,7 +1,7 @@
 /*
  * HVE Hardware Video Encoder C library header
  *
- * Copyright 2019-2021 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2023 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -15,7 +15,7 @@
  *  \mainpage HVE documentation
  *  \see https://github.com/bmegli/hardware-video-encoder
  *
- *  \copyright  Copyright (C) 2019 Bartosz Meglicki
+ *  \copyright  Copyright (C) 2019-2023 Bartosz Meglicki
  *  \file       hve.h
  *  \brief      Library public interface header
  *
@@ -66,6 +66,7 @@ struct hve;
  * You may check encoders supported by your hardware with ffmpeg:
  * @code
  * ffmpeg -encoders | grep vaapi
+ * ffmpeg -encoders | grep nvenc
  * @endcode
  *
  * Encoders typically can be:
@@ -75,6 +76,8 @@ struct hve;
  * - mpeg2_vaapi
  * - vp8_vaapi
  * - vp9_vaapi
+ * - h264_nvenc
+ * - hevc_nvenc
  *
  * The pixel_format (format of what you upload) typically can be:
  * - nv12 (this is generally safe choice)
@@ -85,6 +88,12 @@ struct hve;
  * - rgb0
  * - bgr0
  * - p010le
+ *
+ * You may check pixel formats supported by encoder:
+ * @code
+ * ffmpeg -h encoder=h264_vaapi
+ * ffmpeg -h encoder=h264_nvenc
+ * @endcode
  *
  * There are no software color conversions in this library.
  *
@@ -128,12 +137,12 @@ struct hve;
  * Setting gop_size equal to framerate results in one keyframe per second.
  * Use 0 value for default, -1 for intra only.
  *
- * The compression_level is speed-quality trade-off. Use 0 for driver default.
+ * The compression_level (VAAPI specific) is speed-quality trade-off. Use 0 for driver default.
  * For highest quality use 1, for fastest encoding use 7.
  * The default is not highest quality so if you need it, set it explicitly to 1.
  * The exact interpretation is hardware dependent.
  *
- * The low_power option enables alternative encoding path available on some Intel platforms.
+ * The low_power (VAAPI specific) enables alternative encoding path available on some Intel platforms.
  *
  * You may check support with vainfo (entrypoints ending with LP):
  * @code
@@ -163,8 +172,8 @@ struct hve_config
 	int bit_rate; //!< average bitrate in VBR mode (bit_rate != 0 and qp == 0)
 	int qp; //!< quantization parameter in CQP mode (qp != 0 and bit_rate == 0)
 	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
-	int compression_level; //!< speed-quality tradeoff, 0 for default, 1 for the highest quality, 7 for the fastest
-	int low_power; //!< alternative limited low-power encoding if non-zero
+	int compression_level; //!< speed-quality tradeoff, 0 for default, 1 for the highest quality, 7 for the fastest (VAAPI specific)
+	int low_power; //!< alternative limited low-power encoding if non-zero (VAAPI specific)
 };
 
 /**
