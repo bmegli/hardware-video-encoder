@@ -3,7 +3,8 @@
 This library wraps hardware video encoding and scaling in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
-Currently it supports VAAPI and various codecs (H.264, HEVC, ...).\
+Currently it supports VAAPI and NVENC (no scaling).\
+Various codecs are supported (H.264, HEVC, ...).\
 VBR and CQP modes are supported (e.g. streaming and later editting).
 
 See library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
@@ -22,25 +23,27 @@ Raw encoding (H264, HEVC, ...):
 
 Complex pipelines (muxing, filtering) are beyond the scope of this library.
 
-## Platforms 
+## Platforms
 
 Unix-like operating systems (e.g. Linux).
-Tested on Ubuntu 18.04.
+Tested on Ubuntu 18.04 and 20.04.
 
 ## Hardware
 
 Intel VAAPI compatible hardware encoders ([Quick Sync Video](https://ark.intel.com/Search/FeatureFilter?productType=processors&QuickSyncVideo=true))
+
+Nvidia [NVENC](https://en.wikipedia.org/wiki/Nvidia_NVENC) hardware encoders
 
 ## Dependencies
 
 Library depends on:
 - FFmpeg `avcodec`, `avutil`, `avfilter` (at least 3.4 version)
 
-Works with system FFmpeg on Ubuntu 18.04 and doesn't on 16.04 (outdated FFmpeg and VAAPI ecosystem).
+Works with system FFmpeg on Ubuntu 18.04 and 20.04
 
 ## Building Instructions
 
-Tested on Ubuntu 18.04.
+Tested on Ubuntu 18.04 and 20.04.
 
 ``` bash
 # update package repositories
@@ -67,13 +70,25 @@ make
 ## Running Examples
 
 ``` bash
-# ./hve-encode-raw-h264 <number-of-seconds> [device]
+# ./hve-encode-raw-h264 <seconds> [encoder] [device]
+## h264_vaapi + default device or specify
 ./hve-encode-raw-h264 10
+./hve-encode-raw-h264 10 h264_vaapi
+./hve-encode-raw-h264 10 h264_vaapi /dev/dri/renderD128
+
+## Nvidia NVENC
+./hve-encode-raw-h264 10 h264_nvenc
 ```
 
 ``` bash
-# ./hve-encode-raw-hevc10 <number-of-seconds> [device]
+# ./hve-encode-raw-hevc10 <seconds> [encoder] [device]
+## hevc_vaapi + default device or specify
 ./hve-encode-raw-hevc10 10
+./hve-encode-raw-hevc10 10 hevc_vaapi
+./hve-encode-raw-hevc10 10 hevc_vaapi /dev/dri/renderD128
+
+## Nvidia NVENC
+./hve-encode-raw-hevc10 10 hevc_nvenc
 ```
 
 If you get errors see [troubleshooting](https://github.com/bmegli/hardware-video-encoder/wiki/Troubleshooting).
@@ -103,7 +118,7 @@ There are just 4 functions and 3 user-visible data types:
 ```C
 	struct hve_config hardware_config = {WIDTH, HEIGHT, INPUT_WIDTH, INPUT_HEIGHT, FRAMERATE,
 	                                     DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES,
-                                        BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL, LOW_POWER};
+	                                     BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL, LOW_POWER};
 
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };

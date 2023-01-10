@@ -1,7 +1,7 @@
 /*
- * HVE Hardware Video Encoder library example of encoding through VAAPI to H.264
+ * HVE Hardware Video Encoder library example of encoding through VAAPI or NVENC to H.264
  *
- * Copyright 2019-2021 (C) Bartosz Meglicki <meglickib@gmail.com>
+ * Copyright 2019-2023 (C) Bartosz Meglicki <meglickib@gmail.com>
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -21,7 +21,7 @@ const int INPUT_HEIGHT=720; //optional hardware scaling if different from height
 const int FRAMERATE=30;
 int SECONDS=10;
 const char *DEVICE=NULL; //NULL for default or device e.g. "/dev/dri/renderD128"
-const char *ENCODER="h264_nvenc";//NULL for default (h264_vaapi) or FFmpeg encoder e.g. "hevc_vaapi", ...
+const char *ENCODER=NULL;//NULL for default (h264_vaapi) or FFmpeg encoder e.g. "h264_vaapi", "hevc_vaapi", "h264_nvenc", "hevc_nvenc", ...
 const char *PIXEL_FORMAT="nv12"; //NULL for default (NV12) or pixel format e.g. "rgb0"
 const int PROFILE=FF_PROFILE_H264_HIGH; //or FF_PROFILE_HEVC_MAIN, FF_PROFILE_H264_CONSTRAINED_BASELINE, ...
 const int BFRAMES=0; //max_b_frames, set to 0 to minimize latency, non-zero to minimize size
@@ -131,15 +131,19 @@ int process_user_input(int argc, char* argv[])
 {
 	if(argc < 2)
 	{
-		fprintf(stderr, "Usage: %s <seconds> [device]\n", argv[0]);
+		fprintf(stderr, "Usage: %s <seconds> [encoder] [device]\n", argv[0]);
 		fprintf(stderr, "\nexamples:\n");
 		fprintf(stderr, "%s 10\n", argv[0]);
-		fprintf(stderr, "%s 10 /dev/dri/renderD128\n", argv[0]);
+		fprintf(stderr, "%s 10 h264_vaapi\n", argv[0]);
+		fprintf(stderr, "%s 10 h264_vaapi /dev/dri/renderD128\n", argv[0]);
+		fprintf(stderr, "%s 10 h264_nvenc\n", argv[0]);
+
 		return -1;
 	}
 
 	SECONDS = atoi(argv[1]);
-	DEVICE=argv[2]; //NULL as last argv argument, or device path
+	if(argc >= 3) ENCODER = argv[2];
+	if(argc >= 4) DEVICE = argv[3];
 
 	return 0;
 }
@@ -147,7 +151,7 @@ int process_user_input(int argc, char* argv[])
 int hint_user_on_failure(char *argv[])
 {
 	fprintf(stderr, "unable to initalize encoder, try to specify device e.g:\n\n");
-	fprintf(stderr, "%s 10 /dev/dri/renderD128\n", argv[0]);
+	fprintf(stderr, "%s 10 h264_vaapi /dev/dri/renderD128\n", argv[0]);
 	return -1;
 }
 void hint_user_on_success()
