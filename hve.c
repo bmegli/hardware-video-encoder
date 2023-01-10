@@ -72,8 +72,8 @@ struct hve *hve_init(const struct hve_config *config)
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
 
-	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_VAAPI, device, NULL, 0) ) < 0)
-		return hve_close_and_return_null(h, "failed to create VAAPI device");
+	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, AV_HWDEVICE_TYPE_CUDA, device, NULL, 0) ) < 0)
+		return hve_close_and_return_null(h, "failed to create CUDA device");
 
 	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
 
@@ -92,7 +92,7 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->time_base = (AVRational){ 1, config->framerate };
 	h->avctx->framerate = (AVRational){ config->framerate, 1 };
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };
-	h->avctx->pix_fmt = AV_PIX_FMT_VAAPI;
+	h->avctx->pix_fmt = AV_PIX_FMT_CUDA;
 
 	if(config->profile)
 		h->avctx->profile = config->profile;
@@ -197,7 +197,7 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 		return HVE_ERROR_MSG("failed to create VAAPI frame context");
 
 	frames_ctx = (AVHWFramesContext*)(hw_frames_ref->data);
-	frames_ctx->format = AV_PIX_FMT_VAAPI;
+	frames_ctx->format = AV_PIX_FMT_CUDA;
 
 	frames_ctx->width = config->input_width ? config->input_width : config->width;
 	frames_ctx->height = config->input_height ? config->input_height : config->height;
