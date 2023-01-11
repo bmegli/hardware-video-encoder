@@ -215,22 +215,27 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config)
 
 	frames_ctx->initial_pool_size = 20;
 
+	frames_ctx->sw_format = h->sw_pix_fmt;
+
 	// Starting from FFmpeg 4.1, avcodec will not fall back to NV12 automatically
-	// when using non 4:2:0 software pixel format not supported by codec.
+	// when using non 4:2:0 software pixel format not supported by codec with VAAPI.
 	// Here, instead of using h->sw_pix_fmt we always fall to P010LE for 10 bit
 	// input and NV12 otherwise which may possibly lead to some loss of information
 	// on modern hardware supporting 4:2:2 and 4:4:4 chroma subsampling
 	// (e.g. HEVC with >= IceLake)
 	// See:
 	// https://github.com/bmegli/hardware-video-encoder/issues/26
+	// https://github.com/bmegli/hardware-video-encoder/issues/35
+	if(frames_ctx->format == AV_PIX_FMT_VAAPI)
+	{
+		frames_ctx->sw_format = AV_PIX_FMT_NV12;
 
-	frames_ctx->sw_format = AV_PIX_FMT_NV12;
+		if(hve_pixel_format_depth(h->sw_pix_fmt, &depth) != HVE_OK)
+			return HVE_ERROR_MSG("failed to get pixel format depth");
 
-	if(hve_pixel_format_depth(h->sw_pix_fmt, &depth) != HVE_OK)
-		return HVE_ERROR_MSG("failed to get pixel format depth");
-
-	if(depth == 10)
-		frames_ctx->sw_format = AV_PIX_FMT_P010LE;
+		if(depth == 10)
+			frames_ctx->sw_format = AV_PIX_FMT_P010LE;
+	}
 
 	if((err = av_hwframe_ctx_init(hw_frames_ref)) < 0)
 	{
