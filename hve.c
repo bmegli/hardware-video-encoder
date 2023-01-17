@@ -128,11 +128,20 @@ struct hve *hve_init(const struct hve_config *config)
 
 	AVDictionary *opts = NULL;
 
-	if(config->qp && av_dict_set_int(&opts, "qp", config->qp, 0) < 0)
+	if(config->qp && (av_dict_set_int(&opts, "qp", config->qp, 0) < 0))
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (qp)");
 
-	if(config->vaapi_low_power && av_dict_set_int(&opts, "low_power", config->vaapi_low_power != 0, 0) < 0)
+	if(config->vaapi_low_power && (av_dict_set_int(&opts, "low_power", config->vaapi_low_power != 0, 0) < 0))
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (low_power)");
+
+	if(config->nvenc_preset && config->nvenc_preset[0] != '\0' && (av_dict_set(&opts, "preset", config->nvenc_preset, 0) < 0))
+		return hve_close_and_return_null(h, "failed to initialize option dictionary (NVENC preset)");
+
+	if(config->nvenc_delay && (av_dict_set_int(&opts, "delay", (config->nvenc_delay > 0) ? config->nvenc_delay : 0, 0) < 0))
+		return hve_close_and_return_null(h, "failed to initialize option dictionary (NVENC delay)");
+
+	if(config->nvenc_zerolatency && (av_dict_set_int(&opts, "zerolatency", config->nvenc_zerolatency != 0 , 0) < 0))
+		return hve_close_and_return_null(h, "failed to initialize option dictionary (NVENC zerolatency)");
 
 	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
 	{

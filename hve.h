@@ -156,6 +156,24 @@ struct hve;
  * For the details on loading HuC see:
  * <a href="https://github.com/bmegli/hardware-video-encoder/wiki/GuC-and-HuC">Loading GuC and HuC</a>
  *
+ * The nvenc_preset is encoding preset to use, may be codec specific.
+ *
+ * The default is medium ("default", "" or NULL string)
+ *
+ * Typicall values: "default", "slow", "medium", "fast", "hp", "hq", "bd", "ll", "llhq", "llhp", "lossless", "losslesshp"
+ *
+ * You may check available presets (H.264 example)
+ * @code
+ * ffmpeg -h encoder=h264_nvenc -hide_banner
+ * @endcode
+ *
+ * The nvenc_delay is delay for frame output by given amount of frames.
+ * 0 leaves defaults (which is INT_MAX in FFmpeg nvenc), -1 sets 0.
+ * Set to -1 (maps to 0) if you explicitly need low latency.
+ *
+ * The nvenc_zerolatency is NVENC specific for no reordering delay.
+ * Set to non-zero if you need low latency.
+ *
  * @see hve_init
  */
 struct hve_config
@@ -175,6 +193,9 @@ struct hve_config
 	int gop_size; //!<  group of pictures size, 0 for default, -1 for intra only
 	int compression_level; //!< encoder/codec dependent, 0 for default, for VAAPI 1-7 speed-quality tradeoff, 1 highest quality, 7 fastest
 	int vaapi_low_power; //!< VAAPI specific alternative limited low-power encoding if non-zero
+	const char *nvenc_preset; //!< NVENC and codec specific, NULL / "" or like "default", "slow", "medium", "fast", "hp", "hq", "bd", "ll", "llhq", "llhp", "lossless", "losslesshp"
+	int nvenc_delay; //NVENC specific delay of frame output, 0 for default, -1 for 0 or positive value, set -1 to minimize latency
+	int nvenc_zerolatency; //NVENC specific no reordering delay if non-zero, enable to minimize latency
 };
 
 /**
