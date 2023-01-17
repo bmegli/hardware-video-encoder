@@ -131,7 +131,7 @@ struct hve *hve_init(const struct hve_config *config)
 	if(config->qp && av_dict_set_int(&opts, "qp", config->qp, 0) < 0)
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (qp)");
 
-	if(config->low_power && av_dict_set_int(&opts, "low_power", config->low_power != 0, 0) < 0)
+	if(config->vaapi_low_power && av_dict_set_int(&opts, "low_power", config->vaapi_low_power != 0, 0) < 0)
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (low_power)");
 
 	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
