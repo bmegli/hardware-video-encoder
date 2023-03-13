@@ -143,6 +143,7 @@ int process_user_input(int argc, char* argv[])
 		fprintf(stderr, "%s 10 h264_vaapi\n", argv[0]);
 		fprintf(stderr, "%s 10 h264_vaapi /dev/dri/renderD128\n", argv[0]);
 		fprintf(stderr, "%s 10 h264_nvenc\n", argv[0]);
+		fprintf(stderr, "%s 10 libx264 # (software encoder)\n", argv[0]);
 
 		return -1;
 	}

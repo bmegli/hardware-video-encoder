@@ -48,7 +48,7 @@ struct hve;
  *
  * The width and height are dimmensions of the encoded data.
  *
- * To enable hardware accelerated scaling specify non-zero
+ * To enable hardware accelerated scaling (VAAPI only) specify non-zero
  * input_width and input_height different from width and height.
  *
  * The device can be:
@@ -63,10 +63,11 @@ struct hve;
  * - NULL or empty string for "h264_vaapi"
  * - valid ffmpeg encoder
  *
- * You may check encoders supported by your hardware with ffmpeg:
+ * You may check encoders supported by your hardware/software with ffmpeg:
  * @code
  * ffmpeg -encoders | grep vaapi
  * ffmpeg -encoders | grep nvenc
+ * ffmpeg -encoders | grep h264
  * @endcode
  *
  * Encoders typically can be:
@@ -78,10 +79,13 @@ struct hve;
  * - vp9_vaapi
  * - h264_nvenc
  * - hevc_nvenc
+ * - h264_nvmpi (custom Jetson specific FFmpeg build)
+ * - hevc_nvmpi (custom Jetson specific FFmpeg build)
+ * - libx264 (software)
  *
  * The pixel_format (format of what you upload) typically can be:
  * - nv12 (this is generally safe choice)
- * - yuv420p
+ * - yuv420p (required for some encoders)
  * - yuyv422
  * - uyvy422
  * - yuv422p
@@ -93,6 +97,8 @@ struct hve;
  * @code
  * ffmpeg -h encoder=h264_vaapi
  * ffmpeg -h encoder=h264_nvenc
+ * ffmpeg -h encoder=h264_nvmpi
+ * ffmpeg -h encoder=libx264
  * @endcode
  *
  * There are no software color conversions in this library.
