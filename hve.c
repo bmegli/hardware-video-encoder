@@ -42,7 +42,7 @@ struct hve
 
 static struct hve *hve_close_and_return_null(struct hve *h, const char *msg);
 
-static int init_hwframes_context(struct hve* h, const struct hve_config *config);
+static int init_hwframes_context(struct hve* h, const struct hve_config *config, enum AVHWDeviceType device_type);
 static int init_hardware_scaling(struct hve *h, const struct hve_config *config);
 
 static enum AVHWDeviceType hve_hw_device_type(const char *encoder);
@@ -74,16 +74,11 @@ struct hve *hve_init(const struct hve_config *config)
 
 	//specified encoder or NULL / empty string for H.264 VAAPI
 	const char *encoder = (config->encoder != NULL && config->encoder[0] != '\0') ? config->encoder : "h264_vaapi";
-	//specified device or NULL / empty string for default
-	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
 
 	enum AVHWDeviceType device_type = hve_hw_device_type(encoder);
 
 	if(device_type == AV_HWDEVICE_TYPE_NONE)
-		return hve_close_and_return_null(h, "hve doesn't support selected encoder");
-
-	if( (err = av_hwdevice_ctx_create(&h->hw_device_ctx, device_type, device, NULL, 0) ) < 0)
-		return hve_close_and_return_null(h, "failed to create hardware device context");
+		fprintf(stderr, "hve: not using hardware device type (enoder wrapper, software or hardware not supported by hve)\n");
 
 	if(!(codec = avcodec_find_encoder_by_name(encoder)))
 		return hve_close_and_return_null(h, "could not find encoder");
@@ -123,8 +118,9 @@ struct hve *hve_init(const struct hve_config *config)
 		return hve_close_and_return_null(h, NULL);
 	}
 
-	if((err = init_hwframes_context(h, config)) < 0)
-		return hve_close_and_return_null(h, "failed to set hwframe context");
+	if(device_type != AV_HWDEVICE_TYPE_NONE)
+		if((err = init_hwframes_context(h, config, device_type)) < 0)
+			return hve_close_and_return_null(h, "failed to set hwframe context");
 
 	AVDictionary *opts = NULL;
 
@@ -207,11 +203,17 @@ static struct hve *hve_close_and_return_null(struct hve *h, const char *msg)
 	return NULL;
 }
 
-static int init_hwframes_context(struct hve* h, const struct hve_config *config)
+static int init_hwframes_context(struct hve* h, const struct hve_config *config, enum AVHWDeviceType device_type)
 {
 	AVBufferRef* hw_frames_ref;
 	AVHWFramesContext* frames_ctx = NULL;
 	int err = 0, depth;
+
+	//specified device or NULL / empty string for default
+	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
+
+	if( av_hwdevice_ctx_create(&h->hw_device_ctx, device_type, device, NULL, 0) < 0)
+		return HVE_ERROR_MSG("failed to create hardware device context");
 
 	if(!(hw_frames_ref = av_hwframe_ctx_alloc(h->hw_device_ctx)))
 		return HVE_ERROR_MSG("failed to create hardware frame context");
@@ -349,8 +351,10 @@ static enum AVPixelFormat hve_hw_pixel_format(enum AVHWDeviceType type)
 {
 	if(type == AV_HWDEVICE_TYPE_VAAPI)
 		return AV_PIX_FMT_VAAPI;
-	else if(type == AV_PIX_FMT_CUDA);
+	else if(type == AV_HWDEVICE_TYPE_CUDA)
 		return AV_PIX_FMT_CUDA;
+	else if(type == AV_HWDEVICE_TYPE_NONE)
+		return AV_PIX_FMT_YUV420P; //fallback to YUV420P for software and encoder wrappers
 
 	return AV_PIX_FMT_NONE;
 }
@@ -410,8 +414,9 @@ int hve_send_frame(struct hve *h,struct hve_frame *frame)
 	memcpy(h->sw_frame->linesize, frame->linesize, sizeof(frame->linesize));
 	memcpy(h->sw_frame->data, frame->data, sizeof(frame->data));
 
-	if(hw_upload(h) < 0)
-		return HVE_ERROR_MSG("failed to upload frame data to hardware");
+	if(h->hw_device_ctx)
+		if(hw_upload(h) < 0)
+			return HVE_ERROR_MSG("failed to upload frame data to hardware");
 
 	if(h->filter_graph)
 		return scale_encode(h);
@@ -463,7 +468,9 @@ static int scale_encode(struct hve *h)
 
 static int encode(struct hve *h)
 {
-	if(avcodec_send_frame(h->avctx, h->hw_frame) < 0)
+	AVFrame *frame = h->hw_frame ? h->hw_frame : h->sw_frame;
+
+	if(avcodec_send_frame(h->avctx, frame) < 0)
 		return HVE_ERROR_MSG("send_frame error");
 
 	return HVE_OK;
