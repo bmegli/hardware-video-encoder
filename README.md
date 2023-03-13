@@ -3,9 +3,10 @@
 This library wraps hardware video encoding and scaling in a simple interface.
 There are no performance loses (at the cost of library flexibility).
 
-Currently it supports VAAPI and NVENC (no scaling).\
+Currently it supports VAAPI, NVENC, software-like wrappers (e.g. nvmpi) and software (e.g. libx264).\
 Various codecs are supported (H.264, HEVC, ...).\
-VBR and CQP modes are supported (e.g. streaming and later editting).
+VBR and CQP modes are supported (e.g. streaming and later editting).\
+Scaling is only supported for VAAPI.\
 
 See library [documentation](https://bmegli.github.io/hardware-video-encoder/group__interface.html).
 
@@ -78,6 +79,9 @@ make
 
 ## Nvidia NVENC
 ./hve-encode-raw-h264 10 h264_nvenc
+
+## Software
+./hve-encode-raw-h264 10 libx264
 ```
 
 ``` bash
