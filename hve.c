@@ -95,10 +95,6 @@ struct hve *hve_init(const struct hve_config *config)
 	h->avctx->time_base = (AVRational){ 1, config->framerate };
 	h->avctx->framerate = (AVRational){ config->framerate, 1 };
 	h->avctx->sample_aspect_ratio = (AVRational){ 1, 1 };
-	h->avctx->pix_fmt = hve_hw_pixel_format(device_type);
-
-	if(h->avctx->pix_fmt == AV_PIX_FMT_NONE)
-		return hve_close_and_return_null(h, "could not find hardware pixel format for encoder");
 
 	if(config->profile)
 		h->avctx->profile = config->profile;
@@ -117,6 +113,8 @@ struct hve *hve_init(const struct hve_config *config)
 		fprintf(stderr, "hve: failed to find pixel format %s\n", config->pixel_format);
 		return hve_close_and_return_null(h, NULL);
 	}
+
+	h->avctx->pix_fmt = h->sw_pix_fmt;
 
 	if(device_type != AV_HWDEVICE_TYPE_NONE)
 		if((err = init_hwframes_context(h, config, device_type)) < 0)
@@ -211,6 +209,9 @@ static int init_hwframes_context(struct hve* h, const struct hve_config *config,
 
 	//specified device or NULL / empty string for default
 	const char *device = (config->device != NULL && config->device[0] != '\0') ? config->device : NULL;
+
+	if( (h->avctx->pix_fmt = hve_hw_pixel_format(device_type)) == AV_PIX_FMT_NONE)
+		return HVE_ERROR_MSG("could not find hardware pixel format for encoder");
 
 	if( av_hwdevice_ctx_create(&h->hw_device_ctx, device_type, device, NULL, 0) < 0)
 		return HVE_ERROR_MSG("failed to create hardware device context");
@@ -353,8 +354,6 @@ static enum AVPixelFormat hve_hw_pixel_format(enum AVHWDeviceType type)
 		return AV_PIX_FMT_VAAPI;
 	else if(type == AV_HWDEVICE_TYPE_CUDA)
 		return AV_PIX_FMT_CUDA;
-	else if(type == AV_HWDEVICE_TYPE_NONE)
-		return AV_PIX_FMT_YUV420P; //fallback to YUV420P for software and encoder wrappers
 
 	return AV_PIX_FMT_NONE;
 }
