@@ -65,6 +65,8 @@ cd hardware-video-encoder
 mkdir build
 cd build
 cmake ..
+# alternatively specify FFMPEG_MODULE_PATH pointing to LGPL FFMPEG
+# cmake .. -DFFMPEG_MODULE_PATH=[directory_with_FindFFMPEG.cmake]
 make
 ```
 
@@ -124,7 +126,8 @@ There are just 4 functions and 3 user-visible data types:
 	                                     DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES,
 	                                     BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL,
 	                                     VAAPI_LOW_POWER
-	                                     NVENC_PRESET, NVENC_DELAY, NVENC_ZEROLATENCY};
+	                                     NVENC_PRESET, NVENC_DELAY, NVENC_ZEROLATENCY,
+	                                     NVMPI_NUM_CAPTURE_BUFFERS};
 
 	struct hve *hardware_encoder=hve_init(&hardware_config);
 	struct hve_frame frame = { 0 };

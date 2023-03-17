@@ -202,6 +202,7 @@ struct hve_config
 	const char *nvenc_preset; //!< NVENC and codec specific, NULL / "" or like "default", "slow", "medium", "fast", "hp", "hq", "bd", "ll", "llhq", "llhp", "lossless", "losslesshp"
 	int nvenc_delay; //NVENC specific delay of frame output, 0 for default, -1 for 0 or positive value, set -1 to minimize latency
 	int nvenc_zerolatency; //NVENC specific no reordering delay if non-zero, enable to minimize latency
+	int nvmpi_num_capture_buffers; //NVMPI specific number of buffers in the capture context if non-zero, smaller values may improve latency
 };
 
 /**

@@ -33,6 +33,7 @@ const int VAAPI_LOW_POWER=0; //alternative VAAPI limited low-power encoding path
 const char *NVENC_PRESET=NULL; //NVENC and codec specific, NULL / "" or like "default", "slow", "medium", "fast", "hp", "hq", "bd", "ll", "llhq", "llhp", "lossless", "losslesshp"
 const int NVENC_DELAY=0; //NVENC specific delay of frame output, 0 for default, -1 for 0 or positive value, set -1 to minimize latency
 const int NVENC_ZEROLATENCY=0; //NVENC specific no reordering delay if non-zero, enable to minimize latency
+const int NVMPI_NUM_CAPTURE_BUFFERS=0; //NVMPI specific number of buffers in the capture context if non-zero, smaller values may improve latency
 
 int encoding_loop(struct hve *hardware_encoder, FILE *output_file);
 int process_user_input(int argc, char* argv[]);
@@ -50,7 +51,8 @@ int main(int argc, char* argv[])
 	                                     DEVICE, ENCODER, PIXEL_FORMAT, PROFILE, BFRAMES,
 	                                     BITRATE, QP, GOP_SIZE, COMPRESSION_LEVEL,
 	                                     VAAPI_LOW_POWER,
-	                                     NVENC_PRESET, NVENC_DELAY, NVENC_ZEROLATENCY};
+	                                     NVENC_PRESET, NVENC_DELAY, NVENC_ZEROLATENCY,
+	                                     NVMPI_NUM_CAPTURE_BUFFERS};
 
 	struct hve *hardware_encoder;
 
