@@ -137,9 +137,6 @@ struct hve *hve_init(const struct hve_config *config)
 	if(config->nvenc_zerolatency && (av_dict_set_int(&opts, "zerolatency", config->nvenc_zerolatency != 0 , 0) < 0))
 		return hve_close_and_return_null(h, "failed to initialize option dictionary (NVENC zerolatency)");
 
-	if(config->nvmpi_num_capture_buffers && (av_dict_set_int(&opts, "num_capture_buffers", config->nvmpi_num_capture_buffers, 0) < 0))
-		return hve_close_and_return_null(h, "failed to initialize option dictionary (NVMPI num_capture_buffers)");
-
 	if((err = avcodec_open2(h->avctx, codec, &opts)) < 0)
 	{
 		av_dict_free(&opts);
