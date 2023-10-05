@@ -84,6 +84,17 @@ make
 ./hve-encode-raw-h264 10 libx264
 ```
 
+```bash
+# ./hve-encode-raw-h264-bgr0 <seconds> [encoder] [device]
+## h264_vaapi + default device or specify
+./hve-encode-raw-h264-bgr0 10
+./hve-encode-raw-h264-bgr0 10 h264_vaapi
+./hve-encode-raw-h264-bgr0 10 h264_vaapi /dev/dri/renderD128
+
+## Nvidia NVENC
+./hve-encode-raw-h264-bgr0 10 h264_nvenc
+```
+
 ``` bash
 # ./hve-encode-raw-hevc10 <seconds> [encoder] [device]
 ## hevc_vaapi + default device or specify
