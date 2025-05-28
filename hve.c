@@ -13,6 +13,7 @@
 
 // FFmpeg
 #include <libavcodec/avcodec.h>
+#include <libavcodec/version.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/pixdesc.h>
 #include <libavfilter/buffersink.h>
@@ -68,8 +69,10 @@ struct hve *hve_init(const struct hve_config *config)
 
 	*h = zero_hve; //set all members of dynamically allocated struct to 0 in a portable way
 
+#if LIBAVCODEC_VERSION_MAJOR < 59
 	avcodec_register_all(); // for compatibility with FFmpeg 3.4 (e.g. Ubuntu 18.04)
 	avfilter_register_all();// for compatibility with FFmpeg 3.4 (e.g. Ubuntu 18.04)
+#endif	
 	av_log_set_level(AV_LOG_VERBOSE);
 
 	//specified encoder or NULL / empty string for H.264 VAAPI
